@@ -31,6 +31,41 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Wallet Setup
+
+This app supports **MetaMask** and Coinbase Wallet for sending transactions on **Base Sepolia testnet**.
+
+### Using MetaMask (Recommended)
+
+1. **Install MetaMask**: If you don't have it, install the [MetaMask browser extension](https://metamask.io/download/)
+
+2. **Add Base Sepolia Network**:
+   - Open MetaMask
+   - Click the network dropdown (top left)
+   - Click "Add Network" → "Add a network manually"
+   - Enter these details:
+     - **Network Name**: Base Sepolia
+     - **RPC URL**: `https://sepolia.base.org`
+     - **Chain ID**: `84532`
+     - **Currency Symbol**: ETH
+     - **Block Explorer**: `https://sepolia.basescan.org`
+   - Click "Save"
+
+3. **Get Test ETH**:
+   - Visit [Base Sepolia Faucet](https://www.coinbase.com/faucets/base-ethereum-goerli-faucet)
+   - Connect your wallet and claim free testnet ETH
+
+4. **Connect Your Wallet**:
+   - Click "Send $" on any user marker on the map
+   - Click "Connect Wallet"
+   - Select "MetaMask" from the options
+   - Approve the connection in MetaMask
+
+### Features
+- 🗺️ Interactive map showing based users
+- 💸 Send ETH payments (0.01, 0.05, 0.1 ETH or custom amount)
+- 📊 View transaction history in your profile
+- 🔒 Secure wallet connection with Base Sepolia testnet
 
 ## Learn More
 

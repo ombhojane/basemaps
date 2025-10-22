@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import PaymentModal from "./PaymentModal";
 
 /**
  * Map component with Carto Voyager tiles and Base blue theme
@@ -11,6 +12,11 @@ import "leaflet/dist/leaflet.css";
 const Map = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const [paymentModal, setPaymentModal] = useState({
+    isOpen: false,
+    recipientName: "",
+    recipientImage: "",
+  });
 
   /**
    * Creates a custom avatar marker with Base blue styling
@@ -131,7 +137,7 @@ const Map = () => {
               const offsetLat = latitude + (Math.random() - 0.5) * 0.02;
               const offsetLng = longitude + (Math.random() - 0.5) * 0.02;
 
-              L.marker([offsetLat, offsetLng], { icon: userIcon })
+              const marker = L.marker([offsetLat, offsetLng], { icon: userIcon })
                 .addTo(map)
                 .bindPopup(
                   `
@@ -154,7 +160,7 @@ const Map = () => {
                       </div>
                     </div>
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
-                      <button style="
+                      <button class="wave-btn" style="
                         flex: 1;
                         padding: 8px 12px;
                         background: #0052FF;
@@ -166,7 +172,7 @@ const Map = () => {
                         cursor: pointer;
                         font-family: Inter, sans-serif;
                       ">Wave 👋</button>
-                      <button style="
+                      <button class="send-payment-btn" data-name="${user.name}" data-image="${user.pfp}" style="
                         flex: 1;
                         padding: 8px 12px;
                         background: white;
@@ -185,6 +191,26 @@ const Map = () => {
                     className: "custom-popup",
                   }
                 );
+
+              // Add event listener for Send $ button
+              marker.on("popupopen", () => {
+                setTimeout(() => {
+                  const sendBtn = document.querySelector(
+                    `.send-payment-btn[data-name="${user.name}"]`
+                  ) as HTMLElement;
+                  if (sendBtn) {
+                    const handleClick = () => {
+                      setPaymentModal({
+                        isOpen: true,
+                        recipientName: user.name,
+                        recipientImage: user.pfp,
+                      });
+                      marker.closePopup();
+                    };
+                    sendBtn.onclick = handleClick;
+                  }
+                }, 0);
+              });
             });
           },
           (error) => {
@@ -193,18 +219,80 @@ const Map = () => {
             // Add sample markers at default location
             sampleUsers.forEach((user) => {
               const userIcon = createAvatarMarker(user.pfp, user.name);
-              L.marker([user.lat, user.lng], { icon: userIcon })
+              const marker = L.marker([user.lat, user.lng], { icon: userIcon })
                 .addTo(map)
                 .bindPopup(
                   `
-                  <div style="font-family: Inter, sans-serif; padding: 4px;">
-                    <strong style="color: #0052FF;">${user.name}</strong>
+                  <div style="font-family: Inter, sans-serif; padding: 4px; min-width: 180px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                      <img 
+                        src="${user.pfp}" 
+                        alt="${user.name}"
+                        style="
+                          width: 48px;
+                          height: 48px;
+                          border-radius: 8px;
+                          border: 2px solid #0052FF;
+                          object-fit: cover;
+                        "
+                      />
+                      <div>
+                        <strong style="color: #0052FF; font-size: 14px; display: block;">${user.name}</strong>
+                        <span style="font-size: 11px; color: #666;">Building onchain</span>
+                      </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                      <button class="wave-btn" style="
+                        flex: 1;
+                        padding: 8px 12px;
+                        background: #0052FF;
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        font-size: 12px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        font-family: Inter, sans-serif;
+                      ">Wave 👋</button>
+                      <button class="send-payment-btn" data-name="${user.name}" data-image="${user.pfp}" style="
+                        flex: 1;
+                        padding: 8px 12px;
+                        background: white;
+                        color: #0052FF;
+                        border: 2px solid #0052FF;
+                        border-radius: 8px;
+                        font-size: 12px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        font-family: Inter, sans-serif;
+                      ">Send $</button>
+                    </div>
                   </div>
                 `,
                   {
                     className: "custom-popup",
                   }
                 );
+
+              // Add event listener for Send $ button
+              marker.on("popupopen", () => {
+                setTimeout(() => {
+                  const sendBtn = document.querySelector(
+                    `.send-payment-btn[data-name="${user.name}"]`
+                  ) as HTMLElement;
+                  if (sendBtn) {
+                    const handleClick = () => {
+                      setPaymentModal({
+                        isOpen: true,
+                        recipientName: user.name,
+                        recipientImage: user.pfp,
+                      });
+                      marker.closePopup();
+                    };
+                    sendBtn.onclick = handleClick;
+                  }
+                }, 0);
+              });
             });
           }
         );
@@ -221,18 +309,28 @@ const Map = () => {
   }, []);
 
   return (
-    <div
-      ref={mapRef}
-      style={{
-        width: "100%",
-        height: "100%",
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-      }}
-    />
+    <>
+      <div
+        ref={mapRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }}
+      />
+      <PaymentModal
+        isOpen={paymentModal.isOpen}
+        onClose={() =>
+          setPaymentModal({ isOpen: false, recipientName: "", recipientImage: "" })
+        }
+        recipientName={paymentModal.recipientName}
+        recipientImage={paymentModal.recipientImage}
+      />
+    </>
   );
 };
 
