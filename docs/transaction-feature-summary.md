@@ -23,7 +23,8 @@ Implemented a complete functional transaction system for sending ETH on **Base S
   - Recipient name and address
   - Amount sent in ETH
   - Transaction timestamp
-  - Transaction icon
+  - **Up arrow icon** (red) indicating sent transactions
+  - **"View on BaseScan" link** - Opens transaction details on Base Sepolia explorer in new tab
 - **Activity Stats**: Shows:
   - Total payments sent count
   - Total ETH sent amount
@@ -86,7 +87,8 @@ interface Transaction {
 ✓ Base Sepolia testnet support
 ✓ Real transaction confirmation
 ✓ Wallet signature required
-✓ Transaction history display
+✓ Transaction history display with up arrow icons
+✓ Direct links to view transactions on BaseScan explorer
 ✓ Sender profile tracking
 ✓ Clean, modern UI
 ✓ Error handling
@@ -130,15 +132,53 @@ interface Transaction {
 - Configured Base Sepolia testnet transport
 - Created custom styled wallet option buttons that directly trigger wallet connection
 
+## UI/UX Enhancements
+
+### Transaction Display Improvements
+**1. Up Arrow Icon for Sent Transactions**
+- Changed arrow direction from down (↓) to up (↑) to correctly indicate outgoing payments
+- Applied red color scheme to sent transaction icons for better visual distinction
+- Icon color: `#ef4444` (red) with light red background
+
+**2. BaseScan Explorer Integration**
+- Added "View on BaseScan" link button for each transaction
+- Opens transaction details in new tab on Base Sepolia explorer
+- Link format: `https://sepolia.basescan.org/tx/{transactionHash}`
+- Features external link icon for clear indication
+- Hover effects: elevated shadow, blue highlight
+- Clean, compact button design that doesn't clutter the UI
+
+**3. Transaction Card Layout Improvements**
+- Restructured layout with header and footer sections
+- **Header section**: Name/address on left, amount on right (side by side)
+- **Footer section**: Timestamp on left, BaseScan link on right
+- Fixed overflow issue by adjusting padding in transactions list
+- Better visual hierarchy and cleaner information flow
+
+**4. Wallet Display with Basename Support**
+- Fetches Basename from Base Mainnet using OnchainKit's `getName` function
+- Shows Basename if available, otherwise displays shortened wallet address
+- **Important**: Basenames only exist on Base Mainnet (chain ID 8453), not on Sepolia testnet
+- Even when using Base Sepolia for transactions, the app checks Base Mainnet for Basename
+- Displays loading state while fetching name
+- Clean display with blue icon and monospace font
+- Automatically resolves Basename for any connected wallet address
+
 ## Testing Checklist
 - [ ] Connect wallet on Base Sepolia testnet
+- [ ] Verify wallet displays Basename if set, otherwise shows address
 - [ ] Click "Send $" on map marker
 - [ ] Select preset amount
 - [ ] Enter custom amount
 - [ ] Confirm transaction in wallet
-- [ ] Verify transaction appears in profile
+- [ ] Verify transaction appears in profile with up arrow icon (red)
+- [ ] Verify transaction layout: amount on right side of name/address
+- [ ] Verify BaseScan link is below timestamp (not beside amount)
+- [ ] Click "View on BaseScan" link to verify it opens in new tab
 - [ ] Check transaction stats update
+- [ ] Verify no overflow issues on transaction cards
 - [ ] Test error handling (reject transaction)
 - [ ] Verify mobile responsiveness
 - [ ] Test with location enabled/disabled
+- [ ] Verify BaseScan link shows correct transaction details
 

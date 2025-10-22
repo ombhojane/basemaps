@@ -66,6 +66,14 @@ This app supports **MetaMask** and Coinbase Wallet for sending transactions on *
 - 💸 Send ETH payments (0.01, 0.05, 0.1 ETH or custom amount)
 - 📊 View transaction history in your profile
 - 🔒 Secure wallet connection with Base Sepolia testnet
+- 🏷️ **Basename support**: Displays your Basename if you have one on Base Mainnet
+
+### About Basenames
+- **Basenames** are human-readable names on Base (like `yourname.base.eth`)
+- They only exist on **Base Mainnet**, not on testnets
+- While you test transactions on Base Sepolia, the app will check Base Mainnet for your Basename
+- If you don't have a Basename, your wallet address will be displayed
+- To get a Basename, visit [base.org/names](https://www.base.org/names)
 
 ## Learn More
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Wallet } from "@coinbase/onchainkit/wallet";
+import { getName } from "@coinbase/onchainkit/identity";
+import { useAccount } from "wagmi";
+import { base } from "viem/chains";
 
 interface Transaction {
   hash: string;
@@ -19,6 +21,44 @@ interface Transaction {
 const Profile = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [displayName, setDisplayName] = useState<string>("");
+  const [isLoadingName, setIsLoadingName] = useState(false);
+  const { address } = useAccount();
+
+  /**
+   * Fetch Basename from Base Mainnet (Basenames only exist on mainnet, not testnet)
+   */
+  useEffect(() => {
+    const fetchName = async () => {
+      if (!address) {
+        setDisplayName("");
+        setIsLoadingName(false);
+        return;
+      }
+
+      setIsLoadingName(true);
+
+      try {
+        // Always check Base Mainnet for Basename (chain ID 8453)
+        // Basenames are only on mainnet, not on Sepolia testnet
+        const name = await getName({ address, chain: base });
+        
+        if (name) {
+          setDisplayName(name);
+        } else {
+          // Fallback to shortened address if no Basename found
+          setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
+        }
+      } catch (error) {
+        console.error("Error fetching Basename:", error);
+        setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
+      } finally {
+        setIsLoadingName(false);
+      }
+    };
+
+    fetchName();
+  }, [address]);
 
   /**
    * Load transactions from localStorage on mount
@@ -95,7 +135,29 @@ const Profile = () => {
       <div className="profile-section">
         <h3>Wallet</h3>
         <div className="wallet-card">
-          <Wallet />
+          {address ? (
+            <div className="wallet-address-display">
+              <div className="address-icon">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 16v-4"></path>
+                  <path d="M12 8h.01"></path>
+                </svg>
+              </div>
+              <div className="address-info">
+                {isLoadingName ? "Loading..." : displayName || `${address.slice(0, 6)}...${address.slice(-4)}`}
+              </div>
+            </div>
+          ) : (
+            <p className="no-wallet-text">No wallet connected</p>
+          )}
         </div>
       </div>
 
@@ -125,7 +187,7 @@ const Profile = () => {
             <div className="transaction-items">
               {transactions.map((tx, index) => (
                 <div key={tx.hash || index} className="transaction-item">
-                  <div className="transaction-icon">
+                  <div className="transaction-icon sent">
                     <svg
                       width="20"
                       height="20"
@@ -136,22 +198,52 @@ const Profile = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     >
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <polyline points="19 12 12 19 5 12"></polyline>
+                      <line x1="12" y1="19" x2="12" y2="5"></line>
+                      <polyline points="5 12 12 5 19 12"></polyline>
                     </svg>
                   </div>
-                  <div className="transaction-details">
-                    <div className="transaction-name">{tx.recipientName}</div>
-                    <div className="transaction-address">
-                      {tx.recipient.slice(0, 6)}...{tx.recipient.slice(-4)}
+                  <div className="transaction-content">
+                    <div className="transaction-header">
+                      <div className="transaction-details">
+                        <div className="transaction-name">{tx.recipientName}</div>
+                        <div className="transaction-address">
+                          {tx.recipient.slice(0, 6)}...{tx.recipient.slice(-4)}
+                        </div>
+                      </div>
+                      <div className="transaction-amount">
+                        -{tx.amount} ETH
+                      </div>
                     </div>
-                    <div className="transaction-time">
-                      {new Date(tx.timestamp).toLocaleDateString()} at{" "}
-                      {new Date(tx.timestamp).toLocaleTimeString()}
+                    <div className="transaction-footer">
+                      <div className="transaction-time">
+                        {new Date(tx.timestamp).toLocaleDateString()} at{" "}
+                        {new Date(tx.timestamp).toLocaleTimeString()}
+                      </div>
+                      {tx.hash && (
+                        <a
+                          href={`https://sepolia.basescan.org/tx/${tx.hash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="basescan-link"
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                          </svg>
+                          View on BaseScan
+                        </a>
+                      )}
                     </div>
-                  </div>
-                  <div className="transaction-amount">
-                    -{tx.amount} ETH
                   </div>
                 </div>
               ))}
