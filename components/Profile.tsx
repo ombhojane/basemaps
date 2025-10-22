@@ -209,16 +209,16 @@ const Profile = () => {
                         <div className="transaction-address">
                           {tx.recipient.slice(0, 6)}...{tx.recipient.slice(-4)}
                         </div>
+                        <div className="transaction-time">
+                          {new Date(tx.timestamp).toLocaleDateString()},{" "}
+                          {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
                       </div>
                       <div className="transaction-amount">
                         -{tx.amount} ETH
                       </div>
                     </div>
                     <div className="transaction-footer">
-                      <div className="transaction-time">
-                        {new Date(tx.timestamp).toLocaleDateString()} at{" "}
-                        {new Date(tx.timestamp).toLocaleTimeString()}
-                      </div>
                       {tx.hash && (
                         <a
                           href={`https://sepolia.basescan.org/tx/${tx.hash}`}

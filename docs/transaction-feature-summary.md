@@ -150,10 +150,13 @@ interface Transaction {
 
 **3. Transaction Card Layout Improvements**
 - Restructured layout with header and footer sections
-- **Header section**: Name/address on left, amount on right (side by side)
-- **Footer section**: Timestamp on left, BaseScan link on right
+- **Header section**: Name, address, and timestamp on left; amount on right with optimized spacing
+- **Footer section**: BaseScan link below timestamp with divider line
+- Date and time combined in single row for cleaner look
+- Amount positioned with better spacing (not too far right/up)
 - Fixed overflow issue by adjusting padding in transactions list
-- Better visual hierarchy and cleaner information flow
+- Added subtle border-top divider between content and footer
+- Better visual hierarchy and cleaner information flow following UX best practices
 
 **4. Wallet Display with Basename Support**
 - Fetches Basename from Base Mainnet using OnchainKit's `getName` function
