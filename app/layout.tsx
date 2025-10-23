@@ -5,18 +5,22 @@ import { minikitConfig } from "@/minikit.config";
 import { RootProvider } from "./rootProvider";
 import "./globals.css";
 
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
+const sourceCodePro = Source_Code_Pro({ variable: "--font-source-code-pro", subsets: ["latin"] });
+
 export async function generateMetadata(): Promise<Metadata> {
+  const appName = minikitConfig.miniapp.name;
   return {
-    title: minikitConfig.miniapp.name,
+    title: appName,
     description: minikitConfig.miniapp.description,
     other: {
       "fc:miniapp": JSON.stringify({
         version: minikitConfig.miniapp.version,
         imageUrl: minikitConfig.miniapp.heroImageUrl,
         button: {
-          title: `Launch ${minikitConfig.miniapp.name}`,
+          title: `Launch ${appName}`,
           action: {
-            name: `Launch ${minikitConfig.miniapp.name}`,
+            name: `Launch ${appName}`,
             type: "launch_miniapp",
           },
         },
@@ -25,21 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const sourceCodePro = Source_Code_Pro({
-  variable: "--font-source-code-pro",
-  subsets: ["latin"],
-});
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <RootProvider>
       <html lang="en">

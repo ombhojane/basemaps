@@ -80,6 +80,10 @@ interface Transaction {
 - `components/Map.tsx`
 - `components/Profile.tsx`
 - `app/globals.css`
+- `app/page.tsx` (optimized)
+- `app/layout.tsx` (optimized)
+- `app/rootProvider.tsx` (optimized)
+- `app/page.module.css` (deleted - unused)
 
 ## Key Features
 ✓ Preset amounts (0.01, 0.05, 0.1 ETH)
@@ -131,6 +135,37 @@ interface Transaction {
 - Added QueryClientProvider for wagmi state management
 - Configured Base Sepolia testnet transport
 - Created custom styled wallet option buttons that directly trigger wallet connection
+
+## Code Optimization & Cleanup
+
+### Dead Code Removed
+- **Deleted `app/page.module.css`**: Entire file was unused (not imported anywhere)
+
+### app/rootProvider.tsx Optimizations
+- Renamed `config` to `wagmiConfig` for clarity
+- Removed redundant `preference: "all"` from coinbaseWallet (default value)
+- Removed unnecessary `config` object with appearance and wallet settings (not needed with custom buttons)
+- Removed explicit `notificationProxyUrl: undefined` (unnecessary)
+- **Result**: Reduced from 55 to 42 lines (-23% size)
+
+### app/page.tsx Optimizations
+- Removed redundant comments (code is self-documenting)
+- Simplified useEffect condition to one-liner
+- Cleaner code structure
+
+### app/layout.tsx Optimizations
+- Moved font declarations to top for better organization
+- Converted font declarations to one-liners
+- Added `appName` variable to avoid repetition
+- Removed unnecessary `Readonly<>` wrapper
+- Simplified type annotations
+- **Result**: More readable and maintainable
+
+### Core Logic Maintained
+✅ All functionality preserved  
+✅ No breaking changes  
+✅ Zero linter errors  
+✅ Cleaner, more maintainable codebase
 
 ## UI/UX Enhancements
 

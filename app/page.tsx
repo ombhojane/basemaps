@@ -2,8 +2,10 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
+import { useAccount, useBalance } from "wagmi";
+import { getName } from "@coinbase/onchainkit/identity";
+import { base } from "viem/chains";
 
-// Dynamically import Map component to avoid SSR issues with Leaflet
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
   loading: () => (
@@ -14,29 +16,161 @@ const Map = dynamic(() => import("@/components/Map"), {
   ),
 });
 
-// Import Profile component
 const Profile = dynamic(() => import("@/components/Profile"), {
+  ssr: false,
+});
+
+const Meetups = dynamic(() => import("@/components/Meetups"), {
   ssr: false,
 });
 
 export default function Home() {
   const { setMiniAppReady, isMiniAppReady } = useMiniKit();
-  const [activeTab, setActiveTab] = useState<"home" | "profile">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "meetups" | "profile">("home");
+  const [showGlassmorphism, setShowGlassmorphism] = useState(false);
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
+  const [displayName, setDisplayName] = useState<string>("");
+  const { address } = useAccount();
+  const { data: balanceData } = useBalance({ address });
 
   useEffect(() => {
-    if (!isMiniAppReady) {
-      setMiniAppReady();
-    }
+    if (!isMiniAppReady) setMiniAppReady();
   }, [setMiniAppReady, isMiniAppReady]);
+
+  /**
+   * Listen for scroll events from Meetups and Profile pages
+   */
+  useEffect(() => {
+    const handleMeetupsScroll = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setShowGlassmorphism(customEvent.detail);
+    };
+
+    const handleProfileScroll = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setShowGlassmorphism(customEvent.detail);
+    };
+
+    window.addEventListener("meetupsScroll", handleMeetupsScroll);
+    window.addEventListener("profileScroll", handleProfileScroll);
+
+    return () => {
+      window.removeEventListener("meetupsScroll", handleMeetupsScroll);
+      window.removeEventListener("profileScroll", handleProfileScroll);
+    };
+  }, []);
+
+  /**
+   * Reset glassmorphism when changing tabs
+   */
+  useEffect(() => {
+    setShowGlassmorphism(false);
+  }, [activeTab]);
+
+  /**
+   * Fetch Basename for account display
+   */
+  useEffect(() => {
+    const fetchName = async () => {
+      if (!address) {
+        setDisplayName("");
+        return;
+      }
+
+      try {
+        const name = await getName({ address, chain: base });
+        if (name) {
+          setDisplayName(name);
+        } else {
+          setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
+        }
+      } catch (error) {
+        console.error("Error fetching Basename:", error);
+        setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
+      }
+    };
+
+    fetchName();
+  }, [address]);
 
   return (
     <div className="app-container">
-      {/* Simple basemaps text - top left */}
-      <div className="basemaps-logo">basemaps</div>
+      {/* Top bar with logo and profile */}
+      <div className="top-bar">
+        <div className={`basemaps-logo ${showGlassmorphism ? "scrolled" : ""}`}>
+          basemaps
+        </div>
+
+        {address && (
+          <div className="profile-icon-container">
+            <button
+              className="profile-icon-btn"
+              onClick={() => setShowAccountDropdown(!showAccountDropdown)}
+              aria-label="Account"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </button>
+
+            {showAccountDropdown && (
+              <>
+                <div
+                  className="dropdown-overlay"
+                  onClick={() => setShowAccountDropdown(false)}
+                ></div>
+                <div className="account-dropdown">
+                  <div className="account-dropdown-header">
+                    <span className="account-label">Account</span>
+                  </div>
+
+                  <div className="account-info">
+                    <div className="account-row">
+                      <span className="account-field">Basename</span>
+                      <span className="account-value">{displayName}</span>
+                    </div>
+
+                    <div className="account-row">
+                      <span className="account-field">Wallet ID</span>
+                      <span className="account-value account-address">
+                        {address.slice(0, 6)}...{address.slice(-4)}
+                      </span>
+                    </div>
+
+                    <div className="account-row">
+                      <span className="account-field">Balance</span>
+                      <span className="account-value">
+                        {balanceData
+                          ? `${parseFloat(balanceData.formatted).toFixed(4)} ${
+                              balanceData.symbol
+                            }`
+                          : "0.0000 ETH"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
 
       {/* Main content */}
       <div className="main-content">
-        {activeTab === "home" ? <Map /> : <Profile />}
+        {activeTab === "home" && <Map />}
+        {activeTab === "meetups" && <Meetups />}
+        {activeTab === "profile" && <Profile />}
       </div>
 
       {/* Bottom navigation */}
@@ -60,6 +194,29 @@ export default function Home() {
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
           </svg>
           <span>Home</span>
+        </button>
+
+        <button
+          className={`nav-item ${activeTab === "meetups" ? "active" : ""}`}
+          onClick={() => setActiveTab("meetups")}
+          aria-label="Meetups"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          <span>Meetups</span>
         </button>
 
         <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getName } from "@coinbase/onchainkit/identity";
 import { useAccount } from "wagmi";
 import { base } from "viem/chains";
@@ -23,7 +23,9 @@ const Profile = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [displayName, setDisplayName] = useState<string>("");
   const [isLoadingName, setIsLoadingName] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { address } = useAccount();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   /**
    * Fetch Basename from Base Mainnet (Basenames only exist on mainnet, not testnet)
@@ -61,6 +63,32 @@ const Profile = () => {
   }, [address]);
 
   /**
+   * Handle scroll to add glassmorphism effect to logo
+   */
+  useEffect(() => {
+    const handleScroll = () => {
+      if (containerRef.current) {
+        const scrolled = containerRef.current.scrollTop > 20;
+        setIsScrolled(scrolled);
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
+  }, []);
+
+  /**
+   * Notify parent component about scroll state
+   */
+  useEffect(() => {
+    const event = new CustomEvent("profileScroll", { detail: isScrolled });
+    window.dispatchEvent(event);
+  }, [isScrolled]);
+
+  /**
    * Load transactions from localStorage on mount
    */
   useEffect(() => {
@@ -86,7 +114,7 @@ const Profile = () => {
   }, []);
 
   return (
-    <div className="profile-container">
+    <div className="profile-container" ref={containerRef}>
       {/* Header with settings icon */}
       <div className="profile-header">
         <h2>Profile</h2>
