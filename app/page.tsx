@@ -24,9 +24,13 @@ const Meetups = dynamic(() => import("@/components/Meetups"), {
   ssr: false,
 });
 
+const Chat = dynamic(() => import("@/components/Chat"), {
+  ssr: false,
+});
+
 export default function Home() {
   const { setMiniAppReady, isMiniAppReady } = useMiniKit();
-  const [activeTab, setActiveTab] = useState<"home" | "meetups" | "profile">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "chat" | "meetups" | "profile">("home");
   const [showGlassmorphism, setShowGlassmorphism] = useState(false);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
   const [displayName, setDisplayName] = useState<string>("");
@@ -38,9 +42,14 @@ export default function Home() {
   }, [setMiniAppReady, isMiniAppReady]);
 
   /**
-   * Listen for scroll events from Meetups and Profile pages
+   * Listen for scroll events from Chat, Meetups and Profile pages
    */
   useEffect(() => {
+    const handleChatScroll = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setShowGlassmorphism(customEvent.detail);
+    };
+
     const handleMeetupsScroll = (e: Event) => {
       const customEvent = e as CustomEvent;
       setShowGlassmorphism(customEvent.detail);
@@ -51,10 +60,12 @@ export default function Home() {
       setShowGlassmorphism(customEvent.detail);
     };
 
+    window.addEventListener("chatScroll", handleChatScroll);
     window.addEventListener("meetupsScroll", handleMeetupsScroll);
     window.addEventListener("profileScroll", handleProfileScroll);
 
     return () => {
+      window.removeEventListener("chatScroll", handleChatScroll);
       window.removeEventListener("meetupsScroll", handleMeetupsScroll);
       window.removeEventListener("profileScroll", handleProfileScroll);
     };
@@ -169,6 +180,7 @@ export default function Home() {
       {/* Main content */}
       <div className="main-content">
         {activeTab === "home" && <Map />}
+        {activeTab === "chat" && <Chat />}
         {activeTab === "meetups" && <Meetups />}
         {activeTab === "profile" && <Profile />}
       </div>
@@ -194,6 +206,26 @@ export default function Home() {
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
           </svg>
           <span>Home</span>
+        </button>
+
+        <button
+          className={`nav-item ${activeTab === "chat" ? "active" : ""}`}
+          onClick={() => setActiveTab("chat")}
+          aria-label="Chat"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>Chat</span>
         </button>
 
         <button

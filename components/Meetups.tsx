@@ -123,24 +123,40 @@ const Meetups = () => {
       return;
     }
 
-    setMeetups((prevMeetups) =>
-      prevMeetups.map((meetup) => {
+    setMeetups((prevMeetups) => {
+      const updatedMeetups = prevMeetups.map((meetup) => {
         if (meetup.id === meetupId) {
           const isAttending = meetup.attendees.some(
             (a) => a.id === currentUserId
           );
 
           if (isAttending) {
-            return {
+            // Show confirmation dialog before canceling
+            const confirmCancel = confirm(
+              "Are you sure you want to cancel your registration for this event?"
+            );
+            if (!confirmCancel) {
+              return meetup; // Don't change anything if user cancels
+            }
+
+            const updatedMeetup = {
               ...meetup,
               attendees: meetup.attendees.filter((a) => a.id !== currentUserId),
             };
+
+            // Update selectedMeetup immediately if this is the current detail view
+            if (selectedMeetup && selectedMeetup.id === meetupId) {
+              setSelectedMeetup(updatedMeetup);
+            }
+
+            return updatedMeetup;
           } else {
             if (meetup.attendees.length >= meetup.capacity) {
               alert("This meetup is at full capacity");
               return meetup;
             }
-            return {
+
+            const updatedMeetup = {
               ...meetup,
               attendees: [
                 ...meetup.attendees,
@@ -152,11 +168,20 @@ const Meetups = () => {
                 },
               ],
             };
+
+            // Update selectedMeetup immediately if this is the current detail view
+            if (selectedMeetup && selectedMeetup.id === meetupId) {
+              setSelectedMeetup(updatedMeetup);
+            }
+
+            return updatedMeetup;
           }
         }
         return meetup;
-      })
-    );
+      });
+
+      return updatedMeetups;
+    });
   };
 
   /**

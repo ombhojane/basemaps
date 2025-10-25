@@ -19,6 +19,74 @@ const Map = () => {
   });
 
   /**
+   * Handle wave action - creates a new chat conversation
+   */
+  const handleWave = (userName: string, userAvatar: string, userId: string) => {
+    // Check if conversation already exists
+    const existingConversations = JSON.parse(
+      localStorage.getItem("conversations") || "[]"
+    );
+
+    const existingConversation = existingConversations.find(
+      (conv: any) => conv.userId === userId
+    );
+
+    if (existingConversation) {
+      // Add wave message to existing conversation
+      const waveMessage = {
+        id: Date.now().toString(),
+        text: "👋 Waved at you!",
+        timestamp: Date.now(),
+        senderId: "current-user",
+        senderName: "You",
+      };
+
+      existingConversation.messages.push(waveMessage);
+      existingConversation.lastMessage = "👋 Waved at you!";
+      existingConversation.lastMessageTime = Date.now();
+      existingConversation.unread = false;
+
+      const updatedConversations = existingConversations.map((conv: any) =>
+        conv.userId === userId ? existingConversation : conv
+      );
+
+      // Sort by last message time
+      updatedConversations.sort((a: any, b: any) => b.lastMessageTime - a.lastMessageTime);
+
+      localStorage.setItem("conversations", JSON.stringify(updatedConversations));
+    } else {
+      // Create new conversation
+      const newConversation = {
+        id: `chat-${userId}-${Date.now()}`,
+        userId: userId,
+        userName: userName,
+        userAvatar: userAvatar,
+        lastMessage: "👋 Waved at you!",
+        lastMessageTime: Date.now(),
+        unread: false,
+        messages: [
+          {
+            id: Date.now().toString(),
+            text: "👋 Waved at you!",
+            timestamp: Date.now(),
+            senderId: "current-user",
+            senderName: "You",
+          },
+        ],
+      };
+
+      existingConversations.unshift(newConversation);
+      localStorage.setItem("conversations", JSON.stringify(existingConversations));
+    }
+
+    // Trigger storage event
+    window.dispatchEvent(new Event("storage"));
+
+    // Show feedback
+    alert(`You waved at ${userName}! Check your Chats tab.`);
+  };
+
+  /**
    * Creates a custom avatar marker with Base blue styling
    */
   const createAvatarMarker = (
@@ -160,7 +228,7 @@ const Map = () => {
                       </div>
                     </div>
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
-                      <button class="wave-btn" style="
+                      <button class="wave-btn" data-user="${user.name}" data-index="${index}" style="
                         flex: 1;
                         padding: 8px 12px;
                         background: #0052FF;
@@ -192,14 +260,26 @@ const Map = () => {
                   }
                 );
 
-              // Add event listener for Send $ button
+              // Add event listeners for Wave and Send $ buttons
               marker.on("popupopen", () => {
                 setTimeout(() => {
+                  // Handle Wave button
+                  const waveBtn = document.querySelector(
+                    `.wave-btn[data-user="${user.name}"][data-index="${index}"]`
+                  ) as HTMLElement;
+                  if (waveBtn) {
+                    waveBtn.onclick = () => {
+                      handleWave(user.name, user.pfp, `user-${index}`);
+                      marker.closePopup();
+                    };
+                  }
+
+                  // Handle Send $ button
                   const sendBtn = document.querySelector(
                     `.send-payment-btn[data-name="${user.name}"]`
                   ) as HTMLElement;
                   if (sendBtn) {
-                    const handleClick = () => {
+                    sendBtn.onclick = () => {
                       setPaymentModal({
                         isOpen: true,
                         recipientName: user.name,
@@ -207,7 +287,6 @@ const Map = () => {
                       });
                       marker.closePopup();
                     };
-                    sendBtn.onclick = handleClick;
                   }
                 }, 0);
               });
@@ -217,7 +296,7 @@ const Map = () => {
             console.log("Location access denied, using default location", error);
             
             // Add sample markers at default location
-            sampleUsers.forEach((user) => {
+            sampleUsers.forEach((user, index) => {
               const userIcon = createAvatarMarker(user.pfp, user.name);
               const marker = L.marker([user.lat, user.lng], { icon: userIcon })
                 .addTo(map)
@@ -242,7 +321,7 @@ const Map = () => {
                       </div>
                     </div>
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
-                      <button class="wave-btn" style="
+                      <button class="wave-btn" data-user="${user.name}" data-index-default="${index}" style="
                         flex: 1;
                         padding: 8px 12px;
                         background: #0052FF;
@@ -274,14 +353,26 @@ const Map = () => {
                   }
                 );
 
-              // Add event listener for Send $ button
+              // Add event listeners for Wave and Send $ buttons
               marker.on("popupopen", () => {
                 setTimeout(() => {
+                  // Handle Wave button
+                  const waveBtn = document.querySelector(
+                    `.wave-btn[data-user="${user.name}"][data-index-default="${index}"]`
+                  ) as HTMLElement;
+                  if (waveBtn) {
+                    waveBtn.onclick = () => {
+                      handleWave(user.name, user.pfp, `user-${index}`);
+                      marker.closePopup();
+                    };
+                  }
+
+                  // Handle Send $ button
                   const sendBtn = document.querySelector(
                     `.send-payment-btn[data-name="${user.name}"]`
                   ) as HTMLElement;
                   if (sendBtn) {
-                    const handleClick = () => {
+                    sendBtn.onclick = () => {
                       setPaymentModal({
                         isOpen: true,
                         recipientName: user.name,
@@ -289,7 +380,6 @@ const Map = () => {
                       });
                       marker.closePopup();
                     };
-                    sendBtn.onclick = handleClick;
                   }
                 }, 0);
               });
