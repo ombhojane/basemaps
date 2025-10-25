@@ -1,0 +1,74 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                  BASEMAPS - SUPABASE SETUP                    ║
+║                    Quick Start Guide                          ║
+╚═══════════════════════════════════════════════════════════════╝
+
+📋 STEP-BY-STEP CHECKLIST:
+
+□ 1. Go to https://supabase.com and create account
+□ 2. Create new project (takes 2-3 minutes)
+□ 3. Go to SQL Editor → New Query
+□ 4. Copy & paste ALL of supabase-schema.sql
+□ 5. Click "Run" button
+□ 6. Go to Project Settings → API
+□ 7. Copy your Project URL
+□ 8. Copy your anon public key
+□ 9. Create .env.local file in project root
+□ 10. Add these two lines:
+
+NEXT_PUBLIC_SUPABASE_URL=your_project_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+
+□ 11. Restart dev server: npm run dev
+□ 12. Test by connecting wallet and waving at someone!
+
+═══════════════════════════════════════════════════════════════
+
+🎯 WHAT'S NOW IN SUPABASE:
+
+✅ Users (wallet addresses, locations)
+✅ Chats (conversations & messages) 
+✅ Transactions (payment history)
+✅ Meetups (events & attendees)
+
+═══════════════════════════════════════════════════════════════
+
+🔍 VERIFY IT'S WORKING:
+
+1. Connect wallet in app
+2. Wave at someone on map
+3. Go to Supabase → Table Editor → conversations
+4. You should see a new row!
+
+═══════════════════════════════════════════════════════════════
+
+📁 KEY FILES:
+
+supabase-schema.sql       → Run this in Supabase SQL Editor
+lib/supabase.ts          → Client configuration
+lib/supabase-helpers.ts  → All database functions
+SUPABASE_SETUP.md        → Detailed instructions
+
+═══════════════════════════════════════════════════════════════
+
+⚠️ COMMON ISSUES:
+
+"Failed to fetch"
+→ Check .env.local has correct values
+→ Make sure NEXT_PUBLIC_ prefix is there
+→ Restart dev server
+
+"No data showing"  
+→ Verify SQL schema ran successfully
+→ Check browser console for errors
+→ Ensure wallet is connected
+
+═══════════════════════════════════════════════════════════════
+
+🎉 YOU'RE DONE!
+
+Your basemaps app now has a real database backend!
+No more localStorage - everything persists properly.
+
+═══════════════════════════════════════════════════════════════
+

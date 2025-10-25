@@ -1,108 +1,97 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useAccount } from "wagmi";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import PaymentModal from "./PaymentModal";
-
-interface Message {
-  id: string;
-  text: string;
-  timestamp: number;
-  senderId: string;
-  senderName: string;
-}
-
-interface Conversation {
-  id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  lastMessage: string;
-  lastMessageTime: number;
-  unread: boolean;
-  messages: Message[];
-}
+import {
+  getUserByWallet,
+  upsertUser,
+  getOrCreateConversation,
+  sendMessage,
+} from "@/lib/supabase-helpers";
 
 /**
  * Map component with Carto Voyager tiles and Base blue theme
  * Clean, minimal design inspired by Uber/Ola maps
  */
 const Map = () => {
+  const { address } = useAccount();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const addressRef = useRef(address);
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
     recipientName: "",
     recipientImage: "",
   });
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Keep addressRef in sync with address
+  useEffect(() => {
+    addressRef.current = address;
+  }, [address]);
 
   /**
-   * Handle wave action - creates a new chat conversation
+   * Initialize current user
    */
-  const handleWave = (userName: string, userAvatar: string, userId: string) => {
-    // Check if conversation already exists
-    const existingConversations: Conversation[] = JSON.parse(
-      localStorage.getItem("conversations") || "[]"
-    );
+  useEffect(() => {
+    if (!address) return;
 
-    const existingConversation = existingConversations.find(
-      (conv) => conv.userId === userId
-    );
+    const initUser = async () => {
+      try {
+        let user = await getUserByWallet(address);
+        if (!user) {
+          user = await upsertUser(address, { avatar: "/icon.png" });
+        }
+        setCurrentUserId(user.id);
+      } catch (error) {
+        console.error("Error initializing user:", error);
+      }
+    };
 
-    if (existingConversation) {
-      // Add wave message to existing conversation
-      const waveMessage: Message = {
-        id: Date.now().toString(),
-        text: "👋 Waved at you!",
-        timestamp: Date.now(),
-        senderId: "current-user",
-        senderName: "You",
-      };
+    initUser();
+  }, [address]);
 
-      existingConversation.messages.push(waveMessage);
-      existingConversation.lastMessage = "👋 Waved at you!";
-      existingConversation.lastMessageTime = Date.now();
-      existingConversation.unread = false;
-
-      const updatedConversations = existingConversations.map((conv) =>
-        conv.userId === userId ? existingConversation : conv
-      );
-
-      // Sort by last message time
-      updatedConversations.sort((a, b) => b.lastMessageTime - a.lastMessageTime);
-
-      localStorage.setItem("conversations", JSON.stringify(updatedConversations));
-    } else {
-      // Create new conversation
-      const newConversation = {
-        id: `chat-${userId}-${Date.now()}`,
-        userId: userId,
-        userName: userName,
-        userAvatar: userAvatar,
-        lastMessage: "👋 Waved at you!",
-        lastMessageTime: Date.now(),
-        unread: false,
-        messages: [
-          {
-            id: Date.now().toString(),
-            text: "👋 Waved at you!",
-            timestamp: Date.now(),
-            senderId: "current-user",
-            senderName: "You",
-          },
-        ],
-      };
-
-      existingConversations.unshift(newConversation);
-      localStorage.setItem("conversations", JSON.stringify(existingConversations));
+  /**
+   * Handle wave action - creates a new chat conversation via Supabase
+   */
+  const handleWave = async (userName: string, userAvatar: string, walletAddress: string) => {
+    const currentAddress = addressRef.current;
+    
+    if (!currentAddress) {
+      alert("Please connect your wallet first!");
+      return;
     }
 
-    // Trigger storage event
-    window.dispatchEvent(new Event("storage"));
+    try {
+      // Get or create current user (don't rely on state)
+      let currentUser = await getUserByWallet(currentAddress);
+      if (!currentUser) {
+        currentUser = await upsertUser(currentAddress, { avatar: "/icon.png" });
+      }
 
-    // Show feedback
-    alert(`You waved at ${userName}! Check your Chats tab.`);
+      // Get or create the other user
+      let otherUser = await getUserByWallet(walletAddress);
+      if (!otherUser) {
+        otherUser = await upsertUser(walletAddress, {
+          basename: userName,
+          avatar: userAvatar,
+        });
+      }
+
+      // Get or create conversation
+      const conversation = await getOrCreateConversation(currentUser.id, otherUser.id);
+
+      // Send wave message
+      await sendMessage(conversation.id, currentUser.id, "👋 Waved at you!");
+
+      alert(`You waved at ${userName}! Check your Chats tab.`);
+    } catch (error) {
+      console.error("Error waving:", error);
+      alert("Failed to send wave. Please try again.");
+    }
   };
 
   /**
@@ -180,10 +169,10 @@ const Map = () => {
 
       // Sample based people locations (will be replaced with real data)
       const sampleUsers = [
-        { lat: 37.7749, lng: -122.4194, pfp: "/pfp/pfp1.jpg", name: "Alice" },
-        { lat: 37.7849, lng: -122.4094, pfp: "/pfp/pfp2.jpg", name: "Bob" },
-        { lat: 37.7649, lng: -122.4294, pfp: "/pfp/pfp3.jpg", name: "Charlie" },
-        { lat: 37.7949, lng: -122.4394, pfp: "/pfp/pfp4.jpg", name: "Diana" },
+        { lat: 37.7749, lng: -122.4194, pfp: "/pfp/pfp1.jpg", name: "Alice", wallet: "0x1234567890123456789012345678901234567890" },
+        { lat: 37.7849, lng: -122.4094, pfp: "/pfp/pfp2.jpg", name: "Bob", wallet: "0x2345678901234567890123456789012345678901" },
+        { lat: 37.7649, lng: -122.4294, pfp: "/pfp/pfp3.jpg", name: "Charlie", wallet: "0x3456789012345678901234567890123456789012" },
+        { lat: 37.7949, lng: -122.4394, pfp: "/pfp/pfp4.jpg", name: "Diana", wallet: "0x4567890123456789012345678901234567890123" },
       ];
 
       // Get user's current location
@@ -288,7 +277,7 @@ const Map = () => {
                   ) as HTMLElement;
                   if (waveBtn) {
                     waveBtn.onclick = () => {
-                      handleWave(user.name, user.pfp, `user-${index}`);
+                      handleWave(user.name, user.pfp, user.wallet);
                       marker.closePopup();
                     };
                   }
@@ -381,7 +370,7 @@ const Map = () => {
                   ) as HTMLElement;
                   if (waveBtn) {
                     waveBtn.onclick = () => {
-                      handleWave(user.name, user.pfp, `user-${index}`);
+                      handleWave(user.name, user.pfp, user.wallet);
                       marker.closePopup();
                     };
                   }

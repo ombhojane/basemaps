@@ -4,13 +4,14 @@ import { useState, useEffect, useRef } from "react";
 import { getName } from "@coinbase/onchainkit/identity";
 import { useAccount } from "wagmi";
 import { base } from "viem/chains";
+import { getUserByWallet, upsertUser, getUserTransactions } from "@/lib/supabase-helpers";
 
 interface Transaction {
   hash: string;
   amount: string;
-  recipient: string;
-  recipientName: string;
-  timestamp: number;
+  recipient_address: string;
+  recipient_name: string;
+  timestamp: string;
   status: string;
 }
 
@@ -89,29 +90,36 @@ const Profile = () => {
   }, [isScrolled]);
 
   /**
-   * Load transactions from localStorage on mount
+   * Load transactions from Supabase
    */
   useEffect(() => {
-    const loadTransactions = () => {
-      const stored = localStorage.getItem("transactions");
-      if (stored) {
-        setTransactions(JSON.parse(stored));
+    if (!address) return;
+
+    const loadTransactions = async () => {
+      try {
+        // Get or create user
+        let user = await getUserByWallet(address);
+        if (!user) {
+          user = await upsertUser(address, { avatar: "/icon.png" });
+        }
+
+        // Load transactions
+        const txData = await getUserTransactions(user.id);
+        setTransactions(txData as any[]);
+      } catch (error) {
+        console.error("Error loading transactions:", error);
       }
     };
 
     loadTransactions();
-
-    // Listen for storage changes (when new transactions are added)
-    window.addEventListener("storage", loadTransactions);
     
-    // Refresh every 2 seconds when on profile page
-    const interval = setInterval(loadTransactions, 2000);
+    // Refresh every 10 seconds when on profile page
+    const interval = setInterval(loadTransactions, 10000);
 
     return () => {
-      window.removeEventListener("storage", loadTransactions);
       clearInterval(interval);
     };
-  }, []);
+  }, [address]);
 
   return (
     <div className="profile-container" ref={containerRef}>
@@ -233,9 +241,9 @@ const Profile = () => {
                   <div className="transaction-content">
                     <div className="transaction-header">
                       <div className="transaction-details">
-                        <div className="transaction-name">{tx.recipientName}</div>
+                        <div className="transaction-name">{tx.recipient_name}</div>
                         <div className="transaction-address">
-                          {tx.recipient.slice(0, 6)}...{tx.recipient.slice(-4)}
+                          {tx.recipient_address.slice(0, 6)}...{tx.recipient_address.slice(-4)}
                         </div>
                         <div className="transaction-time">
                           {new Date(tx.timestamp).toLocaleDateString()},{" "}

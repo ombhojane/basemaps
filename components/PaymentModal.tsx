@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSendTransaction, useWaitForTransactionReceipt, useAccount, useConnect } from "wagmi";
 import { parseEther } from "viem";
 import Image from "next/image";
+import { getUserByWallet, upsertUser, addTransaction } from "@/lib/supabase-helpers";
 
 const RECIPIENT_ADDRESS = "0xdc529Ce69Bd28613e23dfb0625B00c7B9f33F8f1";
 const PRESET_AMOUNTS = [0.01, 0.05, 0.1];
@@ -29,7 +30,7 @@ const PaymentModal = ({
   const [customAmount, setCustomAmount] = useState("");
   const [isCustom, setIsCustom] = useState(false);
 
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const { connect, connectors, isPending: isConnecting } = useConnect();
 
   const {
@@ -47,30 +48,38 @@ const PaymentModal = ({
 
   /**
    * Handle successful transaction
-   * Stores transaction data in localStorage
+   * Stores transaction data in Supabase
    */
   useEffect(() => {
-    if (isSuccess && hash && isOpen) {
+    if (isSuccess && hash && isOpen && address) {
       console.log("Transaction successful:", hash);
 
-      // Store transaction in localStorage
-      const transaction = {
-        hash,
-        amount: amount.toString(),
-        recipient: RECIPIENT_ADDRESS,
-        recipientName,
-        timestamp: Date.now(),
-        status: "success",
+      const saveTransaction = async () => {
+        try {
+          // Get or create user
+          let user = await getUserByWallet(address);
+          if (!user) {
+            user = await upsertUser(address, { avatar: "/icon.png" });
+          }
+
+          // Store transaction in Supabase
+          await addTransaction({
+            hash,
+            sender_id: user.id,
+            recipient_address: RECIPIENT_ADDRESS,
+            recipient_name: recipientName,
+            amount: amount.toString(),
+            status: "success",
+            timestamp: new Date().toISOString(),
+          });
+
+          console.log("Transaction saved to Supabase");
+        } catch (error) {
+          console.error("Error saving transaction:", error);
+        }
       };
 
-      const existingTransactions = JSON.parse(
-        localStorage.getItem("transactions") || "[]"
-      );
-      existingTransactions.unshift(transaction);
-      localStorage.setItem("transactions", JSON.stringify(existingTransactions));
-
-      // Trigger storage event for other tabs/components
-      window.dispatchEvent(new Event("storage"));
+      saveTransaction();
 
       // Close modal after short delay
       setTimeout(() => {
@@ -80,7 +89,7 @@ const PaymentModal = ({
         setIsCustom(false);
       }, 2000);
     }
-  }, [isSuccess, hash, amount, recipientName, onClose, isOpen]);
+  }, [isSuccess, hash, amount, recipientName, onClose, isOpen, address]);
 
   /**
    * Handle pay button click

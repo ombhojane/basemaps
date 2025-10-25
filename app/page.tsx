@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, useConnect } from "wagmi";
 import { getName } from "@coinbase/onchainkit/identity";
 import { base } from "viem/chains";
 
@@ -36,6 +36,7 @@ export default function Home() {
   const [displayName, setDisplayName] = useState<string>("");
   const { address } = useAccount();
   const { data: balanceData } = useBalance({ address });
+  const { connect, connectors } = useConnect();
 
   useEffect(() => {
     if (!isMiniAppReady) setMiniAppReady();
@@ -112,7 +113,7 @@ export default function Home() {
           basemaps
         </div>
 
-        {address && (
+        {address ? (
           <div className="profile-icon-container">
             <button
               className="profile-icon-btn"
@@ -173,6 +174,14 @@ export default function Home() {
               </>
             )}
           </div>
+        ) : (
+          <button
+            className="connect-wallet-btn"
+            onClick={() => connect({ connector: connectors[0] })}
+            aria-label="Connect Wallet"
+          >
+            Connect Wallet
+          </button>
         )}
       </div>
 

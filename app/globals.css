@@ -130,6 +130,31 @@
     transform: translateY(0);
   }
 
+  /* Connect Wallet button */
+  .connect-wallet-btn {
+    padding: 10px 20px;
+    border-radius: 12px;
+    background: var(--base-blue);
+    color: var(--base-white);
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 82, 255, 0.2);
+    pointer-events: all;
+  }
+
+  .connect-wallet-btn:hover {
+    background: #0041CC;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 82, 255, 0.35);
+  }
+
+  .connect-wallet-btn:active {
+    transform: translateY(0);
+  }
+
   /* Dropdown overlay */
   .dropdown-overlay {
     position: fixed;

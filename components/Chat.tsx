@@ -3,11 +3,20 @@
 import { useState, useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
 import Image from "next/image";
+import {
+  getUserByWallet,
+  upsertUser,
+  getUserConversations,
+  getConversationMessages,
+  sendMessage,
+  subscribeToConversations,
+  subscribeToMessages,
+} from "@/lib/supabase-helpers";
 
 interface Message {
   id: string;
   text: string;
-  timestamp: number;
+  timestamp: string;
   senderId: string;
   senderName: string;
 }
@@ -18,18 +27,17 @@ interface Conversation {
   userName: string;
   userAvatar: string;
   lastMessage: string;
-  lastMessageTime: number;
+  lastMessageTime: string;
   unread: boolean;
   messages: Message[];
 }
 
 /**
- * Chat page component
+ * Chat page component with Supabase integration
  * Shows conversations and allows messaging with users
  */
 const Chat = () => {
   const { address } = useAccount();
-  const currentUserId = address || "current-user";
   const containerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -38,32 +46,92 @@ const Chat = () => {
   const [messageInput, setMessageInput] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "detail">("list");
   const [isScrolled, setIsScrolled] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   /**
-   * Load conversations from localStorage
+   * Initialize user and load conversations from Supabase
    */
   useEffect(() => {
-    const loadConversations = () => {
-      const stored = localStorage.getItem("conversations");
-      if (stored) {
-        const loadedConversations = JSON.parse(stored);
-        setConversations(loadedConversations);
+    if (!address) {
+      setLoading(false);
+      return;
+    }
+
+    const initializeUser = async () => {
+      try {
+        // Get or create user
+        let user = await getUserByWallet(address);
+        if (!user) {
+          user = await upsertUser(address, {
+            avatar: "/icon.png",
+          });
+        }
+        setCurrentUserId(user.id);
+
+        // Load conversations
+        await loadConversations(user.id);
+      } catch (error) {
+        console.error("Error initializing user:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadConversations();
+    initializeUser();
+  }, [address]);
 
-    // Listen for storage changes (when new waves/messages are added)
-    window.addEventListener("storage", loadConversations);
-    
-    // Refresh every 2 seconds when on chat page
-    const interval = setInterval(loadConversations, 2000);
+  /**
+   * Load conversations from Supabase
+   */
+  const loadConversations = async (userId: string) => {
+    try {
+      const data = await getUserConversations(userId);
+
+      const formattedConversations: Conversation[] = await Promise.all(
+        data.map(async (conv: any) => {
+          const otherUser = conv.participant1_id === userId ? conv.participant2 : conv.participant1;
+          const messages = await getConversationMessages(conv.id);
+
+          return {
+            id: conv.id,
+            userId: otherUser.id,
+            userName: otherUser.basename || `${otherUser.wallet_address.slice(0, 6)}...${otherUser.wallet_address.slice(-4)}`,
+            userAvatar: otherUser.avatar || "/icon.png",
+            lastMessage: conv.last_message || "",
+            lastMessageTime: conv.last_message_time || conv.created_at,
+            unread: false,
+            messages: messages.map((msg: any) => ({
+              id: msg.id,
+              text: msg.text,
+              timestamp: msg.timestamp,
+              senderId: msg.sender_id,
+              senderName: msg.sender_id === userId ? "You" : otherUser.basename || "User",
+            })),
+          };
+        })
+      );
+
+      setConversations(formattedConversations);
+    } catch (error) {
+      console.error("Error loading conversations:", error);
+    }
+  };
+
+  /**
+   * Subscribe to real-time updates
+   */
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const subscription = subscribeToConversations(currentUserId, () => {
+      loadConversations(currentUserId);
+    });
 
     return () => {
-      window.removeEventListener("storage", loadConversations);
-      clearInterval(interval);
+      subscription.unsubscribe();
     };
-  }, []);
+  }, [currentUserId]);
 
   /**
    * Handle scroll for glassmorphism effect
@@ -104,13 +172,6 @@ const Chat = () => {
    * Handle conversation click
    */
   const handleConversationClick = (conversation: Conversation) => {
-    // Mark as read
-    const updatedConversations = conversations.map((conv) =>
-      conv.id === conversation.id ? { ...conv, unread: false } : conv
-    );
-    setConversations(updatedConversations);
-    localStorage.setItem("conversations", JSON.stringify(updatedConversations));
-
     setSelectedConversation(conversation);
     setViewMode("detail");
   };
@@ -124,41 +185,21 @@ const Chat = () => {
   };
 
   /**
-   * Send a message
+   * Send a message via Supabase
    */
-  const handleSendMessage = () => {
-    if (!messageInput.trim() || !selectedConversation) return;
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !selectedConversation || !currentUserId) return;
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: messageInput,
-      timestamp: Date.now(),
-      senderId: currentUserId,
-      senderName: "You",
-    };
+    try {
+      await sendMessage(selectedConversation.id, currentUserId, messageInput);
 
-    const updatedConversation = {
-      ...selectedConversation,
-      messages: [...selectedConversation.messages, newMessage],
-      lastMessage: messageInput,
-      lastMessageTime: Date.now(),
-    };
+      // Reload conversations to get updated data
+      await loadConversations(currentUserId);
 
-    const updatedConversations = conversations.map((conv) =>
-      conv.id === selectedConversation.id ? updatedConversation : conv
-    );
-
-    // Sort conversations by last message time
-    updatedConversations.sort((a, b) => b.lastMessageTime - a.lastMessageTime);
-
-    setConversations(updatedConversations);
-    setSelectedConversation(updatedConversation);
-    localStorage.setItem("conversations", JSON.stringify(updatedConversations));
-    
-    // Trigger storage event
-    window.dispatchEvent(new Event("storage"));
-    
-    setMessageInput("");
+      setMessageInput("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   };
 
   /**
@@ -174,7 +215,7 @@ const Chat = () => {
   /**
    * Format timestamp
    */
-  const formatTime = (timestamp: number) => {
+  const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
@@ -188,6 +229,17 @@ const Chat = () => {
       return date.toLocaleDateString([], { month: "short", day: "numeric" });
     }
   };
+
+  if (loading) {
+    return (
+      <div className="chat-container" ref={containerRef}>
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading chats...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Detail View - Chat Messages
   if (viewMode === "detail" && selectedConversation) {
@@ -339,4 +391,3 @@ const Chat = () => {
 };
 
 export default Chat;
-
