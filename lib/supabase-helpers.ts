@@ -1,4 +1,11 @@
-import { supabase, User, Conversation, Message, Transaction, Meetup, MeetupAttendee } from './supabase';
+import { supabase, User, Transaction } from './supabase';
+
+// Supabase realtime payload type
+interface RealtimePayload {
+  new: Record<string, unknown>;
+  old: Record<string, unknown>;
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+}
 
 // =====================================================
 // USER FUNCTIONS
@@ -244,7 +251,7 @@ export async function getUserMeetups(userId: string) {
 // REAL-TIME SUBSCRIPTIONS
 // =====================================================
 
-export function subscribeToConversations(userId: string, callback: (payload: any) => void) {
+export function subscribeToConversations(userId: string, callback: (payload: RealtimePayload) => void) {
   return supabase
     .channel('conversations')
     .on(
@@ -270,7 +277,7 @@ export function subscribeToConversations(userId: string, callback: (payload: any
     .subscribe();
 }
 
-export function subscribeToMessages(conversationId: string, callback: (payload: any) => void) {
+export function subscribeToMessages(conversationId: string, callback: (payload: RealtimePayload) => void) {
   return supabase
     .channel(`messages-${conversationId}`)
     .on(

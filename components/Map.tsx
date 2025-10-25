@@ -26,7 +26,6 @@ const Map = () => {
     recipientName: "",
     recipientImage: "",
   });
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Keep addressRef in sync with address
   useEffect(() => {
@@ -34,18 +33,17 @@ const Map = () => {
   }, [address]);
 
   /**
-   * Initialize current user
+   * Initialize current user in Supabase
    */
   useEffect(() => {
     if (!address) return;
 
     const initUser = async () => {
       try {
-        let user = await getUserByWallet(address);
+        const user = await getUserByWallet(address);
         if (!user) {
-          user = await upsertUser(address, { avatar: "/icon.png" });
+          await upsertUser(address, { avatar: "/icon.png" });
         }
-        setCurrentUserId(user.id);
       } catch (error) {
         console.error("Error initializing user:", error);
       }

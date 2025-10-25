@@ -105,7 +105,7 @@ const Profile = () => {
 
         // Load transactions
         const txData = await getUserTransactions(user.id);
-        setTransactions(txData as any[]);
+        setTransactions(txData);
       } catch (error) {
         console.error("Error loading transactions:", error);
       }

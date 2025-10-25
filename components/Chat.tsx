@@ -32,6 +32,17 @@ interface Conversation {
   messages: Message[];
 }
 
+// Supabase message structure from database
+interface SupabaseMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  text: string;
+  timestamp: string;
+  is_read?: boolean;
+  created_at?: string;
+}
+
 /**
  * Chat page component with Supabase integration
  * Shows conversations and allows messaging with users
@@ -89,19 +100,24 @@ const Chat = () => {
       const data = await getUserConversations(userId);
 
       const formattedConversations: Conversation[] = await Promise.all(
-        data.map(async (conv: any) => {
-          const otherUser = conv.participant1_id === userId ? conv.participant2 : conv.participant1;
-          const messages = await getConversationMessages(conv.id);
+        data.map(async (conv: Record<string, unknown>) => {
+          const otherUser = (conv.participant1_id === userId ? conv.participant2 : conv.participant1) as {
+            id: string;
+            wallet_address: string;
+            basename?: string;
+            avatar?: string;
+          };
+          const messages = await getConversationMessages(conv.id as string);
 
           return {
-            id: conv.id,
+            id: conv.id as string,
             userId: otherUser.id,
             userName: otherUser.basename || `${otherUser.wallet_address.slice(0, 6)}...${otherUser.wallet_address.slice(-4)}`,
             userAvatar: otherUser.avatar || "/icon.png",
-            lastMessage: conv.last_message || "",
-            lastMessageTime: conv.last_message_time || conv.created_at,
+            lastMessage: (conv.last_message as string) || "",
+            lastMessageTime: (conv.last_message_time as string) || (conv.created_at as string),
             unread: false,
-            messages: messages.map((msg: any) => ({
+            messages: messages.map((msg: SupabaseMessage) => ({
               id: msg.id,
               text: msg.text,
               timestamp: msg.timestamp,
@@ -147,7 +163,7 @@ const Chat = () => {
         if (!prev || prev.id !== selectedConversation.id) return prev;
         return {
           ...prev,
-          messages: messages.map((msg: any) => ({
+          messages: messages.map((msg: SupabaseMessage) => ({
             id: msg.id,
             text: msg.text,
             timestamp: msg.timestamp,
@@ -162,7 +178,7 @@ const Chat = () => {
 
     // Subscribe to new messages
     const subscription = subscribeToMessages(selectedConversation.id, async (payload) => {
-      const newMessage = payload.new;
+      const newMessage = payload.new as unknown as SupabaseMessage;
       
       setSelectedConversation(prev => {
         if (!prev || prev.id !== selectedConversation.id) return prev;
@@ -190,7 +206,7 @@ const Chat = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [selectedConversation?.id, currentUserId]);
+  }, [selectedConversation, currentUserId]);
 
   /**
    * Handle scroll for glassmorphism effect
