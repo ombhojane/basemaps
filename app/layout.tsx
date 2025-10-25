@@ -10,13 +10,30 @@ const sourceCodePro = Source_Code_Pro({ variable: "--font-source-code-pro", subs
 
 export async function generateMetadata(): Promise<Metadata> {
   const appName = minikitConfig.miniapp.name;
+  const config = minikitConfig.miniapp;
+  
   return {
-    title: appName,
-    description: minikitConfig.miniapp.description,
+    title: config.ogTitle || appName,
+    description: config.ogDescription || config.description,
+    metadataBase: new URL(config.homeUrl),
+    openGraph: {
+      title: config.ogTitle || appName,
+      description: config.ogDescription || config.description,
+      images: [config.ogImageUrl],
+      siteName: appName,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: config.ogTitle || appName,
+      description: config.ogDescription || config.description,
+      images: [config.ogImageUrl],
+    },
+    manifest: '/.well-known/farcaster.json',
     other: {
       "fc:miniapp": JSON.stringify({
-        version: minikitConfig.miniapp.version,
-        imageUrl: minikitConfig.miniapp.heroImageUrl,
+        version: config.version,
+        imageUrl: config.heroImageUrl,
         button: {
           title: `Launch ${appName}`,
           action: {
