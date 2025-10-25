@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSendTransaction, useWaitForTransactionReceipt, useAccount, useConnect, useDisconnect } from "wagmi";
+import { useSendTransaction, useWaitForTransactionReceipt, useAccount, useConnect } from "wagmi";
 import { parseEther } from "viem";
+import Image from "next/image";
 
 const RECIPIENT_ADDRESS = "0xdc529Ce69Bd28613e23dfb0625B00c7B9f33F8f1";
 const PRESET_AMOUNTS = [0.01, 0.05, 0.1];
@@ -28,7 +29,7 @@ const PaymentModal = ({
   const [customAmount, setCustomAmount] = useState("");
   const [isCustom, setIsCustom] = useState(false);
 
-  const { isConnected, address } = useAccount();
+  const { isConnected } = useAccount();
   const { connect, connectors, isPending: isConnecting } = useConnect();
 
   const {
@@ -108,10 +109,12 @@ const PaymentModal = ({
 
         {/* Recipient info */}
         <div className="recipient-info">
-          <img
+          <Image
             src={recipientImage}
             alt={recipientName}
             className="recipient-avatar"
+            width={48}
+            height={48}
           />
           <div className="recipient-details">
             <strong>{recipientName}</strong>

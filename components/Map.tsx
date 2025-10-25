@@ -5,6 +5,25 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import PaymentModal from "./PaymentModal";
 
+interface Message {
+  id: string;
+  text: string;
+  timestamp: number;
+  senderId: string;
+  senderName: string;
+}
+
+interface Conversation {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  lastMessage: string;
+  lastMessageTime: number;
+  unread: boolean;
+  messages: Message[];
+}
+
 /**
  * Map component with Carto Voyager tiles and Base blue theme
  * Clean, minimal design inspired by Uber/Ola maps
@@ -23,17 +42,17 @@ const Map = () => {
    */
   const handleWave = (userName: string, userAvatar: string, userId: string) => {
     // Check if conversation already exists
-    const existingConversations = JSON.parse(
+    const existingConversations: Conversation[] = JSON.parse(
       localStorage.getItem("conversations") || "[]"
     );
 
     const existingConversation = existingConversations.find(
-      (conv: any) => conv.userId === userId
+      (conv) => conv.userId === userId
     );
 
     if (existingConversation) {
       // Add wave message to existing conversation
-      const waveMessage = {
+      const waveMessage: Message = {
         id: Date.now().toString(),
         text: "👋 Waved at you!",
         timestamp: Date.now(),
@@ -46,12 +65,12 @@ const Map = () => {
       existingConversation.lastMessageTime = Date.now();
       existingConversation.unread = false;
 
-      const updatedConversations = existingConversations.map((conv: any) =>
+      const updatedConversations = existingConversations.map((conv) =>
         conv.userId === userId ? existingConversation : conv
       );
 
       // Sort by last message time
-      updatedConversations.sort((a: any, b: any) => b.lastMessageTime - a.lastMessageTime);
+      updatedConversations.sort((a, b) => b.lastMessageTime - a.lastMessageTime);
 
       localStorage.setItem("conversations", JSON.stringify(updatedConversations));
     } else {

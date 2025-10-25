@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
+import Image from "next/image";
 
 interface Message {
   id: string;
@@ -210,10 +211,12 @@ const Chat = () => {
                 <polyline points="12 19 5 12 12 5"></polyline>
               </svg>
             </button>
-            <img
+            <Image
               src={selectedConversation.userAvatar}
               alt={selectedConversation.userName}
               className="chat-detail-avatar"
+              width={40}
+              height={40}
             />
             <div className="chat-detail-info">
               <h3>{selectedConversation.userName}</h3>
@@ -308,10 +311,12 @@ const Chat = () => {
               className={`conversation-item ${conversation.unread ? "unread" : ""}`}
               onClick={() => handleConversationClick(conversation)}
             >
-              <img
+              <Image
                 src={conversation.userAvatar}
                 alt={conversation.userName}
                 className="conversation-avatar"
+                width={48}
+                height={48}
               />
               <div className="conversation-content">
                 <div className="conversation-header">

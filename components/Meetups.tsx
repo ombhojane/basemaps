@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
+import Image from "next/image";
 
 interface Attendee {
   id: string;
@@ -318,10 +319,12 @@ const Meetups = () => {
                 {getSortedAttendees(selectedMeetup.attendees).map(
                   (attendee) => (
                     <div key={attendee.id} className="attendee-item">
-                      <img
+                      <Image
                         src={attendee.avatar}
                         alt={attendee.name}
                         className="attendee-item-avatar"
+                        width={40}
+                        height={40}
                       />
                       <div className="attendee-item-info">
                         <span className="attendee-name">
@@ -495,13 +498,15 @@ const Meetups = () => {
                     <div className="meetup-attendees">
                       <div className="attendees-avatars">
                         {sortedAttendees.slice(0, 4).map((attendee, idx) => (
-                          <img
+                          <Image
                             key={attendee.id}
                             src={attendee.avatar}
                             alt={attendee.name}
                             className="attendee-avatar"
                             style={{ zIndex: 10 - idx }}
                             title={attendee.name + (attendee.isMutual ? " (Mutual)" : "")}
+                            width={32}
+                            height={32}
                           />
                         ))}
                         {meetup.attendees.length > 4 && (
@@ -587,12 +592,14 @@ const Meetups = () => {
                     <div className="meetup-attendees">
                       <div className="attendees-avatars">
                         {sortedAttendees.slice(0, 4).map((attendee, idx) => (
-                          <img
+                          <Image
                             key={attendee.id}
                             src={attendee.avatar}
                             alt={attendee.name}
                             className="attendee-avatar"
                             style={{ zIndex: 10 - idx }}
+                            width={32}
+                            height={32}
                           />
                         ))}
                         {meetup.attendees.length > 4 && (
