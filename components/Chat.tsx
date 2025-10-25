@@ -119,7 +119,7 @@ const Chat = () => {
   };
 
   /**
-   * Subscribe to real-time updates
+   * Subscribe to real-time updates for conversations
    */
   useEffect(() => {
     if (!currentUserId) return;
@@ -132,6 +132,65 @@ const Chat = () => {
       subscription.unsubscribe();
     };
   }, [currentUserId]);
+
+  /**
+   * Subscribe to real-time messages for selected conversation
+   */
+  useEffect(() => {
+    if (!selectedConversation || !currentUserId) return;
+
+    // Load initial messages
+    const loadInitialMessages = async () => {
+      const messages = await getConversationMessages(selectedConversation.id);
+      
+      setSelectedConversation(prev => {
+        if (!prev || prev.id !== selectedConversation.id) return prev;
+        return {
+          ...prev,
+          messages: messages.map((msg: any) => ({
+            id: msg.id,
+            text: msg.text,
+            timestamp: msg.timestamp,
+            senderId: msg.sender_id,
+            senderName: msg.sender_id === currentUserId ? "You" : prev.userName,
+          })),
+        };
+      });
+    };
+
+    loadInitialMessages();
+
+    // Subscribe to new messages
+    const subscription = subscribeToMessages(selectedConversation.id, async (payload) => {
+      const newMessage = payload.new;
+      
+      setSelectedConversation(prev => {
+        if (!prev || prev.id !== selectedConversation.id) return prev;
+        
+        // Remove any temp messages and add the real message
+        const filteredMessages = prev.messages.filter(m => !m.id.startsWith('temp-'));
+        
+        // Check if message already exists
+        const messageExists = filteredMessages.some(m => m.id === newMessage.id);
+        if (messageExists) return prev;
+        
+        return {
+          ...prev,
+          messages: [...filteredMessages, {
+            id: newMessage.id,
+            text: newMessage.text,
+            timestamp: newMessage.timestamp,
+            senderId: newMessage.sender_id,
+            senderName: newMessage.sender_id === currentUserId ? "You" : prev.userName,
+          }],
+        };
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [selectedConversation?.id, currentUserId]);
 
   /**
    * Handle scroll for glassmorphism effect
@@ -185,20 +244,50 @@ const Chat = () => {
   };
 
   /**
-   * Send a message via Supabase
+   * Send a message via Supabase (with optimistic update)
    */
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !selectedConversation || !currentUserId) return;
 
+    const messageText = messageInput;
+    const tempId = `temp-${Date.now()}`;
+    
+    // Optimistic update - immediately show the message
+    const optimisticMessage: Message = {
+      id: tempId,
+      text: messageText,
+      timestamp: new Date().toISOString(),
+      senderId: currentUserId,
+      senderName: "You",
+    };
+
+    setSelectedConversation(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        messages: [...prev.messages, optimisticMessage],
+      };
+    });
+
+    setMessageInput("");
+
     try {
-      await sendMessage(selectedConversation.id, currentUserId, messageInput);
-
-      // Reload conversations to get updated data
-      await loadConversations(currentUserId);
-
-      setMessageInput("");
+      // Send to Supabase - real-time subscription will handle the confirmed message
+      await sendMessage(selectedConversation.id, currentUserId, messageText);
     } catch (error) {
       console.error("Error sending message:", error);
+      
+      // Remove optimistic message on error
+      setSelectedConversation(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.filter(m => m.id !== tempId),
+        };
+      });
+      
+      alert("Failed to send message. Please try again.");
+      setMessageInput(messageText);
     }
   };
 
