@@ -62,6 +62,18 @@ export async function updateUserLocation(walletAddress: string, latitude: number
   if (error) throw error;
 }
 
+export async function getUsersWithLocations() {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .not('latitude', 'is', null)
+    .not('longitude', 'is', null)
+    .order('last_seen', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
 // =====================================================
 // CONVERSATION FUNCTIONS
 // =====================================================

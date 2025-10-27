@@ -10,6 +10,8 @@ import {
   upsertUser,
   getOrCreateConversation,
   sendMessage,
+  updateUserLocation,
+  getUsersWithLocations,
 } from "@/lib/supabase-helpers";
 
 /**
@@ -33,16 +35,16 @@ const Map = () => {
   }, [address]);
 
   /**
-   * Initialize current user in Supabase
+   * Initialize current user in Supabase and save location
    */
   useEffect(() => {
     if (!address) return;
 
     const initUser = async () => {
       try {
-        const user = await getUserByWallet(address);
+        let user = await getUserByWallet(address);
         if (!user) {
-          await upsertUser(address, { avatar: "/icon.png" });
+          user = await upsertUser(address, { avatar: "/icon.png" });
         }
       } catch (error) {
         console.error("Error initializing user:", error);
@@ -165,20 +167,129 @@ const Map = () => {
 
       mapInstanceRef.current = map;
 
-      // Sample based people locations (will be replaced with real data)
-      const sampleUsers = [
-        { lat: 37.7749, lng: -122.4194, pfp: "/pfp/pfp1.jpg", name: "Alice", wallet: "0x1234567890123456789012345678901234567890" },
-        { lat: 37.7849, lng: -122.4094, pfp: "/pfp/pfp2.jpg", name: "Bob", wallet: "0x2345678901234567890123456789012345678901" },
-        { lat: 37.7649, lng: -122.4294, pfp: "/pfp/pfp3.jpg", name: "Charlie", wallet: "0x3456789012345678901234567890123456789012" },
-        { lat: 37.7949, lng: -122.4394, pfp: "/pfp/pfp4.jpg", name: "Diana", wallet: "0x4567890123456789012345678901234567890123" },
-      ];
+      // Function to load and display users from database
+      const loadUsersOnMap = async (currentUserAddress?: string) => {
+        try {
+          const dbUsers = await getUsersWithLocations();
+          
+          dbUsers.forEach((user) => {
+            // Skip current user
+            if (currentUserAddress && user.wallet_address === currentUserAddress) {
+              return;
+            }
+
+            const userName = user.basename || `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`;
+            const userAvatar = user.avatar || "/icon.png";
+            const userIcon = createAvatarMarker(userAvatar, userName);
+
+            const marker = L.marker([user.latitude!, user.longitude!], { icon: userIcon })
+              .addTo(map)
+              .bindPopup(
+                `
+                <div style="font-family: Inter, sans-serif; padding: 4px; min-width: 180px;">
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <img 
+                      src="${userAvatar}" 
+                      alt="${userName}"
+                      style="
+                        width: 48px;
+                        height: 48px;
+                        border-radius: 8px;
+                        border: 2px solid #0052FF;
+                        object-fit: cover;
+                      "
+                    />
+                    <div>
+                      <strong style="color: #0052FF; font-size: 14px; display: block;">${userName}</strong>
+                      <span style="font-size: 11px; color: #666;">Building onchain</span>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <button class="wave-btn" data-wallet="${user.wallet_address}" style="
+                      flex: 1;
+                      padding: 8px 12px;
+                      background: #0052FF;
+                      color: white;
+                      border: none;
+                      border-radius: 8px;
+                      font-size: 12px;
+                      font-weight: 600;
+                      cursor: pointer;
+                      font-family: Inter, sans-serif;
+                    ">Wave 👋</button>
+                    <button class="send-payment-btn" data-wallet="${user.wallet_address}" style="
+                      flex: 1;
+                      padding: 8px 12px;
+                      background: white;
+                      color: #0052FF;
+                      border: 2px solid #0052FF;
+                      border-radius: 8px;
+                      font-size: 12px;
+                      font-weight: 600;
+                      cursor: pointer;
+                      font-family: Inter, sans-serif;
+                    ">Send $</button>
+                  </div>
+                </div>
+              `,
+                {
+                  className: "custom-popup",
+                }
+              );
+
+            // Add event listeners for Wave and Send $ buttons
+            marker.on("popupopen", () => {
+              setTimeout(() => {
+                // Handle Wave button
+                const waveBtn = document.querySelector(
+                  `.wave-btn[data-wallet="${user.wallet_address}"]`
+                ) as HTMLElement;
+                if (waveBtn) {
+                  waveBtn.onclick = () => {
+                    handleWave(userName, userAvatar, user.wallet_address);
+                    marker.closePopup();
+                  };
+                }
+
+                // Handle Send $ button
+                const sendBtn = document.querySelector(
+                  `.send-payment-btn[data-wallet="${user.wallet_address}"]`
+                ) as HTMLElement;
+                if (sendBtn) {
+                  sendBtn.onclick = () => {
+                    setPaymentModal({
+                      isOpen: true,
+                      recipientName: userName,
+                      recipientImage: userAvatar,
+                    });
+                    marker.closePopup();
+                  };
+                }
+              }, 0);
+            });
+          });
+        } catch (error) {
+          console.error("Error loading users on map:", error);
+        }
+      };
 
       // Get user's current location
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          (position) => {
+          async (position) => {
             const { latitude, longitude } = position.coords;
             map.setView([latitude, longitude], 14);
+
+            // Save user location to database if wallet is connected
+            const currentAddress = addressRef.current;
+            if (currentAddress) {
+              try {
+                await updateUserLocation(currentAddress, latitude, longitude);
+                console.log("Location saved to database");
+              } catch (error) {
+                console.error("Error saving location:", error);
+              }
+            }
 
             // Add current user marker with Base icon
             const currentUserIcon = createAvatarMarker(
@@ -203,195 +314,21 @@ const Map = () => {
                 }
               );
 
-            // Add sample user markers around current location
-            sampleUsers.forEach((user, index) => {
-              const userIcon = createAvatarMarker(user.pfp, user.name);
-              
-              // Offset from current location
-              const offsetLat = latitude + (Math.random() - 0.5) * 0.02;
-              const offsetLng = longitude + (Math.random() - 0.5) * 0.02;
-
-              const marker = L.marker([offsetLat, offsetLng], { icon: userIcon })
-                .addTo(map)
-                .bindPopup(
-                  `
-                  <div style="font-family: Inter, sans-serif; padding: 4px; min-width: 180px;">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                      <img 
-                        src="${user.pfp}" 
-                        alt="${user.name}"
-                        style="
-                          width: 48px;
-                          height: 48px;
-                          border-radius: 8px;
-                          border: 2px solid #0052FF;
-                          object-fit: cover;
-                        "
-                      />
-                      <div>
-                        <strong style="color: #0052FF; font-size: 14px; display: block;">${user.name}</strong>
-                        <span style="font-size: 11px; color: #666;">Building onchain</span>
-                      </div>
-                    </div>
-                    <div style="display: flex; gap: 8px; margin-top: 8px;">
-                      <button class="wave-btn" data-user="${user.name}" data-index="${index}" style="
-                        flex: 1;
-                        padding: 8px 12px;
-                        background: #0052FF;
-                        color: white;
-                        border: none;
-                        border-radius: 8px;
-                        font-size: 12px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        font-family: Inter, sans-serif;
-                      ">Wave 👋</button>
-                      <button class="send-payment-btn" data-name="${user.name}" data-image="${user.pfp}" style="
-                        flex: 1;
-                        padding: 8px 12px;
-                        background: white;
-                        color: #0052FF;
-                        border: 2px solid #0052FF;
-                        border-radius: 8px;
-                        font-size: 12px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        font-family: Inter, sans-serif;
-                      ">Send $</button>
-                    </div>
-                  </div>
-                `,
-                  {
-                    className: "custom-popup",
-                  }
-                );
-
-              // Add event listeners for Wave and Send $ buttons
-              marker.on("popupopen", () => {
-                setTimeout(() => {
-                  // Handle Wave button
-                  const waveBtn = document.querySelector(
-                    `.wave-btn[data-user="${user.name}"][data-index="${index}"]`
-                  ) as HTMLElement;
-                  if (waveBtn) {
-                    waveBtn.onclick = () => {
-                      handleWave(user.name, user.pfp, user.wallet);
-                      marker.closePopup();
-                    };
-                  }
-
-                  // Handle Send $ button
-                  const sendBtn = document.querySelector(
-                    `.send-payment-btn[data-name="${user.name}"]`
-                  ) as HTMLElement;
-                  if (sendBtn) {
-                    sendBtn.onclick = () => {
-                      setPaymentModal({
-                        isOpen: true,
-                        recipientName: user.name,
-                        recipientImage: user.pfp,
-                      });
-                      marker.closePopup();
-                    };
-                  }
-                }, 0);
-              });
-            });
+            // Load and display database users on map
+            await loadUsersOnMap(currentAddress);
           },
-          (error) => {
+          async (error) => {
             console.log("Location access denied, using default location", error);
             
-            // Add sample markers at default location
-            sampleUsers.forEach((user, index) => {
-              const userIcon = createAvatarMarker(user.pfp, user.name);
-              const marker = L.marker([user.lat, user.lng], { icon: userIcon })
-                .addTo(map)
-                .bindPopup(
-                  `
-                  <div style="font-family: Inter, sans-serif; padding: 4px; min-width: 180px;">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                      <img 
-                        src="${user.pfp}" 
-                        alt="${user.name}"
-                        style="
-                          width: 48px;
-                          height: 48px;
-                          border-radius: 8px;
-                          border: 2px solid #0052FF;
-                          object-fit: cover;
-                        "
-                      />
-                      <div>
-                        <strong style="color: #0052FF; font-size: 14px; display: block;">${user.name}</strong>
-                        <span style="font-size: 11px; color: #666;">Building onchain</span>
-                      </div>
-                    </div>
-                    <div style="display: flex; gap: 8px; margin-top: 8px;">
-                      <button class="wave-btn" data-user="${user.name}" data-index-default="${index}" style="
-                        flex: 1;
-                        padding: 8px 12px;
-                        background: #0052FF;
-                        color: white;
-                        border: none;
-                        border-radius: 8px;
-                        font-size: 12px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        font-family: Inter, sans-serif;
-                      ">Wave 👋</button>
-                      <button class="send-payment-btn" data-name="${user.name}" data-image="${user.pfp}" style="
-                        flex: 1;
-                        padding: 8px 12px;
-                        background: white;
-                        color: #0052FF;
-                        border: 2px solid #0052FF;
-                        border-radius: 8px;
-                        font-size: 12px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        font-family: Inter, sans-serif;
-                      ">Send $</button>
-                    </div>
-                  </div>
-                `,
-                  {
-                    className: "custom-popup",
-                  }
-                );
-
-              // Add event listeners for Wave and Send $ buttons
-              marker.on("popupopen", () => {
-                setTimeout(() => {
-                  // Handle Wave button
-                  const waveBtn = document.querySelector(
-                    `.wave-btn[data-user="${user.name}"][data-index-default="${index}"]`
-                  ) as HTMLElement;
-                  if (waveBtn) {
-                    waveBtn.onclick = () => {
-                      handleWave(user.name, user.pfp, user.wallet);
-                      marker.closePopup();
-                    };
-                  }
-
-                  // Handle Send $ button
-                  const sendBtn = document.querySelector(
-                    `.send-payment-btn[data-name="${user.name}"]`
-                  ) as HTMLElement;
-                  if (sendBtn) {
-                    sendBtn.onclick = () => {
-                      setPaymentModal({
-                        isOpen: true,
-                        recipientName: user.name,
-                        recipientImage: user.pfp,
-                      });
-                      marker.closePopup();
-                    };
-                  }
-                }, 0);
-              });
-            });
+            // Load and display database users on map even without location access
+            const currentAddress = addressRef.current;
+            await loadUsersOnMap(currentAddress);
           }
         );
+      } else {
+        // No geolocation support, just load database users
+        const currentAddress = addressRef.current;
+        loadUsersOnMap(currentAddress);
       }
     }
 
