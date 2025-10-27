@@ -60,6 +60,8 @@ const Chat = () => {
   const { address } = useAccount();
   const containerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -68,6 +70,9 @@ const Chat = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
 
   /**
    * Initialize user and load conversations from Supabase
@@ -246,13 +251,41 @@ const Chat = () => {
   }, [isScrolled]);
 
   /**
-   * Scroll to bottom when messages change
+   * Smart scroll - only scroll to bottom if user is already at bottom
+   */
+  useEffect(() => {
+    if (viewMode === "detail" && isAtBottom && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [selectedConversation?.messages, viewMode, isAtBottom]);
+
+  /**
+   * Track scroll position to determine if user is at bottom
+   */
+  useEffect(() => {
+    const messagesContainer = messagesContainerRef.current;
+    if (!messagesContainer) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+      // Consider "at bottom" if within 100px of bottom
+      const atBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setIsAtBottom(atBottom);
+    };
+
+    messagesContainer.addEventListener('scroll', handleScroll);
+    return () => messagesContainer.removeEventListener('scroll', handleScroll);
+  }, [viewMode]);
+
+  /**
+   * Scroll to bottom when conversation changes
    */
   useEffect(() => {
     if (viewMode === "detail" && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+      setIsAtBottom(true);
     }
-  }, [selectedConversation?.messages, viewMode]);
+  }, [selectedConversation?.id, viewMode]);
 
   /**
    * Handle conversation click
@@ -271,18 +304,66 @@ const Chat = () => {
   };
 
   /**
+   * Handle media file selection
+   */
+  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type (images and GIFs)
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    setSelectedMedia(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setMediaPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  /**
+   * Clear media selection
+   */
+  const handleClearMedia = () => {
+    setSelectedMedia(null);
+    setMediaPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  /**
    * Send a message via Supabase (with optimistic update)
    */
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !selectedConversation || !currentUserId) return;
+    if ((!messageInput.trim() && !selectedMedia) || !selectedConversation || !currentUserId) return;
 
-    const messageText = messageInput;
+    const messageText = messageInput.trim() || (selectedMedia ? '📷 Photo' : '');
     const tempId = `temp-${Date.now()}`;
+    
+    // For now, we'll store media as base64 in the message text
+    // In production, you'd upload to storage (Supabase Storage, S3, etc.)
+    let finalMessageText = messageText;
+    if (selectedMedia && mediaPreview) {
+      finalMessageText = `${messageText}\n[MEDIA]${mediaPreview}[/MEDIA]`;
+    }
     
     // Optimistic update - immediately show the message
     const optimisticMessage: Message = {
       id: tempId,
-      text: messageText,
+      text: finalMessageText,
       timestamp: new Date().toISOString(),
       senderId: currentUserId,
       senderName: "You",
@@ -297,10 +378,12 @@ const Chat = () => {
     });
 
     setMessageInput("");
+    handleClearMedia();
+    setIsAtBottom(true);
 
     try {
       // Send to Supabase - real-time subscription will handle the confirmed message
-      await sendMessage(selectedConversation.id, currentUserId, messageText);
+      await sendMessage(selectedConversation.id, currentUserId, finalMessageText);
     } catch (error) {
       console.error("Error sending message:", error);
       
@@ -393,52 +476,108 @@ const Chat = () => {
           </div>
 
           {/* Messages */}
-          <div className="chat-messages">
-            {selectedConversation.messages.map((message) => (
-              <div
-                key={message.id}
-                className={`message ${
-                  message.senderId === currentUserId ? "message-sent" : "message-received"
-                }`}
-              >
-                <div className="message-bubble">
-                  <p>{message.text}</p>
-                  <span className="message-time">{formatTime(message.timestamp)}</span>
+          <div className="chat-messages" ref={messagesContainerRef}>
+            {selectedConversation.messages.map((message) => {
+              // Parse media from message text
+              const mediaMatch = message.text.match(/\[MEDIA\]([\s\S]*?)\[\/MEDIA\]/);
+              const mediaUrl = mediaMatch ? mediaMatch[1] : null;
+              const textWithoutMedia = message.text.replace(/\[MEDIA\][\s\S]*?\[\/MEDIA\]/, '').trim();
+
+              return (
+                <div
+                  key={message.id}
+                  className={`message ${
+                    message.senderId === currentUserId ? "message-sent" : "message-received"
+                  }`}
+                >
+                  <div className="message-bubble">
+                    {mediaUrl && (
+                      <div className="message-media">
+                        <img src={mediaUrl} alt="Shared media" />
+                      </div>
+                    )}
+                    {textWithoutMedia && <p>{textWithoutMedia}</p>}
+                    <span className="message-time">{formatTime(message.timestamp)}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Message input */}
           <div className="chat-input-container">
-            <input
-              type="text"
-              placeholder="Type a message..."
-              value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="chat-input"
-            />
-            <button
-              className="send-message-btn"
-              onClick={handleSendMessage}
-              disabled={!messageInput.trim()}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {/* Media Preview */}
+            {mediaPreview && (
+              <div className="media-preview-container">
+                <div className="media-preview">
+                  <img src={mediaPreview} alt="Preview" />
+                  <button 
+                    className="media-preview-close"
+                    onClick={handleClearMedia}
+                    aria-label="Remove media"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="chat-input-wrapper">
+              {/* Media button */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                onChange={handleMediaSelect}
+                style={{ display: 'none' }}
+              />
+              <button
+                className="media-btn"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Attach media"
               >
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
-            </button>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+              </button>
+
+              {/* Text input */}
+              <input
+                type="text"
+                placeholder="Type a message..."
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="chat-input"
+              />
+
+              {/* Send button */}
+              <button
+                className="send-message-btn"
+                onClick={handleSendMessage}
+                disabled={!messageInput.trim() && !selectedMedia}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
