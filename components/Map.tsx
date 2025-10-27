@@ -187,6 +187,10 @@ const Map = () => {
           
           console.log(`Loading ${dbUsers.length} users on map`);
           
+          // Track used positions to prevent overlap
+          const usedPositions: { lat: number; lng: number }[] = [];
+          const minDistance = 0.0001; // Minimum distance between markers (~11 meters)
+          
           dbUsers.forEach((user) => {
             // Check if this is the current user
             const isCurrentUser = currentUserAddress ? user.wallet_address === currentUserAddress : false;
@@ -196,7 +200,24 @@ const Map = () => {
             console.log(`Creating marker for ${userName} with avatar:`, userAvatar);
             const userIcon = createAvatarMarker(userAvatar, userName, isCurrentUser);
 
-            const marker = L.marker([user.latitude!, user.longitude!], { icon: userIcon })
+            // Check if position is too close to existing markers
+            let lat = user.latitude!;
+            let lng = user.longitude!;
+            
+            for (const pos of usedPositions) {
+              const distance = Math.sqrt(Math.pow(lat - pos.lat, 2) + Math.pow(lng - pos.lng, 2));
+              if (distance < minDistance) {
+                // Add small offset to avoid overlap
+                lat += (Math.random() - 0.5) * minDistance * 2;
+                lng += (Math.random() - 0.5) * minDistance * 2;
+                break;
+              }
+            }
+            
+            // Store this position
+            usedPositions.push({ lat, lng });
+
+            const marker = L.marker([lat, lng], { icon: userIcon })
               .addTo(map)
               .bindPopup(
                 `
