@@ -189,7 +189,7 @@ const Map = () => {
           
           // Track used positions to prevent overlap
           const usedPositions: { lat: number; lng: number }[] = [];
-          const minDistance = 0.0001; // Minimum distance between markers (~11 meters)
+          const minDistance = 0.002; // Minimum distance between markers (~200 meters)
           
           dbUsers.forEach((user) => {
             // Check if this is the current user
@@ -200,17 +200,25 @@ const Map = () => {
             console.log(`Creating marker for ${userName} with avatar:`, userAvatar);
             const userIcon = createAvatarMarker(userAvatar, userName, isCurrentUser);
 
-            // Check if position is too close to existing markers
+            // Check if position is too close to existing markers and adjust
             let lat = user.latitude!;
             let lng = user.longitude!;
+            let attempts = 0;
+            let isTooClose = true;
             
-            for (const pos of usedPositions) {
-              const distance = Math.sqrt(Math.pow(lat - pos.lat, 2) + Math.pow(lng - pos.lng, 2));
-              if (distance < minDistance) {
-                // Add small offset to avoid overlap
-                lat += (Math.random() - 0.5) * minDistance * 2;
-                lng += (Math.random() - 0.5) * minDistance * 2;
-                break;
+            while (isTooClose && attempts < 20) {
+              isTooClose = false;
+              for (const pos of usedPositions) {
+                const distance = Math.sqrt(Math.pow(lat - pos.lat, 2) + Math.pow(lng - pos.lng, 2));
+                if (distance < minDistance) {
+                  // Add offset in a circular pattern to spread markers evenly
+                  const angle = (attempts * Math.PI * 2) / 8; // 8 positions around circle
+                  lat = user.latitude! + Math.cos(angle) * minDistance;
+                  lng = user.longitude! + Math.sin(angle) * minDistance;
+                  isTooClose = true;
+                  attempts++;
+                  break;
+                }
               }
             }
             

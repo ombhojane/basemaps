@@ -138,7 +138,6 @@ export default function Home() {
                 alt="Profile"
                 width={44}
                 height={44}
-                style={{ objectFit: 'cover', borderRadius: '20px' }}
               />
             </button>
 
