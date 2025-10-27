@@ -146,6 +146,10 @@ const Profile = () => {
     try {
       setSelectedAvatar(avatar);
       await upsertUser(address, { avatar });
+      
+      // Dispatch event to update profile icon in real-time
+      const event = new CustomEvent("avatarUpdated", { detail: avatar });
+      window.dispatchEvent(event);
     } catch (error) {
       console.error("Error updating avatar:", error);
     }
@@ -215,7 +219,10 @@ const Profile = () => {
               <span>Privacy Mode</span>
               <span className="toggle-indicator">Off</span>
             </button>
-            <button className="settings-option">
+            <button 
+              className="settings-option"
+              onClick={() => window.open('https://devfolio.co/projects/basemaps-6f6e', '_blank')}
+            >
               <span>About basemaps</span>
             </button>
           </div>

@@ -118,6 +118,22 @@ export default function Home() {
     fetchUserData();
   }, [address]);
 
+  /**
+   * Listen for avatar updates from Profile settings
+   */
+  useEffect(() => {
+    const handleAvatarUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setUserAvatar(customEvent.detail);
+      console.log('Profile icon updated instantly:', customEvent.detail);
+    };
+
+    window.addEventListener("avatarUpdated", handleAvatarUpdate);
+    return () => {
+      window.removeEventListener("avatarUpdated", handleAvatarUpdate);
+    };
+  }, []);
+
   return (
     <div className="app-container">
       {/* Top bar with logo and profile */}

@@ -12,28 +12,44 @@ interface RealtimePayload {
 // =====================================================
 
 /**
- * Fetch Farcaster profile by wallet address
+ * Fetch Farcaster profile by wallet address using Neynar API
+ * Uses bulk-by-address endpoint to get user data including FID and profile picture
  */
-export async function getFarcasterByWallet(walletAddress: string): Promise<{ fid: string; pfp: string } | null> {
+export async function getFarcasterByWallet(walletAddress: string): Promise<{ fid: string; pfp: string; username?: string } | null> {
   try {
-    const response = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${walletAddress}`, {
+    const apiKey = process.env.NEXT_PUBLIC_NEYNAR_API_KEY || 'NEYNAR_API_DOCS';
+    const url = `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${walletAddress}`;
+    
+    console.log(`Fetching Farcaster profile for wallet: ${walletAddress.slice(0, 6)}...`);
+    
+    const response = await fetch(url, {
       headers: {
         'accept': 'application/json',
-        'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY || 'NEYNAR_API_DOCS'
+        'api_key': apiKey
       }
     });
     
-    if (!response.ok) return null;
-    
-    const data = await response.json();
-    if (data && data[walletAddress.toLowerCase()] && data[walletAddress.toLowerCase()][0]) {
-      const user = data[walletAddress.toLowerCase()][0];
-      return {
-        fid: user.fid?.toString() || '',
-        pfp: user.pfp_url || ''
-      };
+    if (!response.ok) {
+      console.log(`Neynar API returned status ${response.status} for ${walletAddress.slice(0, 6)}`);
+      return null;
     }
     
+    const data = await response.json();
+    const addressKey = walletAddress.toLowerCase();
+    
+    if (data && data[addressKey] && data[addressKey][0]) {
+      const user = data[addressKey][0];
+      const farcasterData = {
+        fid: user.fid?.toString() || '',
+        pfp: user.pfp_url || '',
+        username: user.username || ''
+      };
+      
+      console.log(`✓ Found Farcaster profile for ${walletAddress.slice(0, 6)}:`, farcasterData);
+      return farcasterData;
+    }
+    
+    console.log(`No Farcaster profile found for ${walletAddress.slice(0, 6)}`);
     return null;
   } catch (error) {
     console.error('Error fetching Farcaster profile by wallet:', error);
@@ -42,21 +58,20 @@ export async function getFarcasterByWallet(walletAddress: string): Promise<{ fid
 }
 
 export async function upsertUser(walletAddress: string, data?: Partial<User>) {
-  // Try to fetch Farcaster profile if not already provided
-  if (!data?.farcaster_fid && !data?.farcaster_pfp) {
-    try {
-      const farcasterData = await getFarcasterByWallet(walletAddress);
-      if (farcasterData) {
-        console.log(`Found Farcaster profile for ${walletAddress.slice(0, 6)}:`, farcasterData);
-        data = {
-          ...data,
-          farcaster_fid: farcasterData.fid,
-          farcaster_pfp: farcasterData.pfp
-        };
-      }
-    } catch {
-      console.log('No Farcaster profile found for wallet');
+  // Always try to fetch/refresh Farcaster profile data
+  // This ensures we have the latest Farcaster PFP
+  try {
+    const farcasterData = await getFarcasterByWallet(walletAddress);
+    if (farcasterData) {
+      console.log(`✓ Integrating Farcaster profile for ${walletAddress.slice(0, 6)}`);
+      data = {
+        ...data,
+        farcaster_fid: farcasterData.fid,
+        farcaster_pfp: farcasterData.pfp
+      };
     }
+  } catch {
+    console.log(`No Farcaster profile for ${walletAddress.slice(0, 6)}`);
   }
 
   const { data: user, error } = await supabase
@@ -103,23 +118,24 @@ export async function getFarcasterProfileImage(fid: string): Promise<string | nu
 
 /**
  * Get best available avatar for user
- * Priority: Farcaster PFP > Custom Avatar > Random PFP > Default
+ * Priority: Farcaster PFP > Custom Avatar > Default
+ * Farcaster integration prioritizes onchain identity
  */
 export function getUserAvatar(user: User): string {
-  // First priority: Farcaster profile picture
+  // PRIORITY 1: Farcaster profile picture (onchain identity)
   if (user.farcaster_pfp) {
-    console.log(`Using Farcaster PFP for ${user.wallet_address.slice(0, 6)}:`, user.farcaster_pfp);
+    console.log(`✓ Farcaster PFP for ${user.wallet_address.slice(0, 6)}: ${user.farcaster_pfp.slice(0, 50)}...`);
     return user.farcaster_pfp;
   }
   
-  // Second priority: Custom selected avatar
+  // PRIORITY 2: Custom selected avatar from settings
   if (user.avatar) {
-    console.log(`Using avatar for ${user.wallet_address.slice(0, 6)}:`, user.avatar);
+    console.log(`✓ Custom avatar for ${user.wallet_address.slice(0, 6)}: ${user.avatar}`);
     return user.avatar;
   }
   
-  // Default fallback
-  console.log(`Using default for ${user.wallet_address.slice(0, 6)}`);
+  // PRIORITY 3: Default fallback
+  console.log(`✓ Default avatar for ${user.wallet_address.slice(0, 6)}`);
   return '/icon.png';
 }
 
