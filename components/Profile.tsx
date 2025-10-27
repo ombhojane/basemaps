@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { getName } from "@coinbase/onchainkit/identity";
 import { useAccount } from "wagmi";
 import { base } from "viem/chains";
-import { getUserByWallet, upsertUser, getUserTransactions } from "@/lib/supabase-helpers";
+import { getUserByWallet, upsertUser, getUserTransactions, getUserAvatar } from "@/lib/supabase-helpers";
+import Image from "next/image";
 
 interface Transaction {
   hash: string;
@@ -14,6 +15,15 @@ interface Transaction {
   timestamp: string;
   status: string;
 }
+
+// Available avatar options
+const AVATAR_OPTIONS = [
+  "/pfp/pfp1.jpg",
+  "/pfp/pfp2.jpg",
+  "/pfp/pfp3.jpg",
+  "/pfp/pfp4.jpg",
+  "/icon.png",
+];
 
 /**
  * Profile page component
@@ -25,6 +35,8 @@ const Profile = () => {
   const [displayName, setDisplayName] = useState<string>("");
   const [isLoadingName, setIsLoadingName] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState<string>("/icon.png");
+  const [displayAvatar, setDisplayAvatar] = useState<string>("/icon.png");
   const { address } = useAccount();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -90,36 +102,58 @@ const Profile = () => {
   }, [isScrolled]);
 
   /**
-   * Load transactions from Supabase
+   * Load user data and transactions from Supabase
    */
   useEffect(() => {
     if (!address) return;
 
-    const loadTransactions = async () => {
+    const loadUserData = async () => {
       try {
         // Get or create user
         let user = await getUserByWallet(address);
         if (!user) {
-          user = await upsertUser(address, { avatar: "/icon.png" });
+          // Assign random avatar if new user
+          const randomAvatar = AVATAR_OPTIONS[Math.floor(Math.random() * AVATAR_OPTIONS.length)];
+          user = await upsertUser(address, { avatar: randomAvatar });
         }
+
+        // Set selected avatar (for picker)
+        setSelectedAvatar(user.avatar || "/icon.png");
+        
+        // Set display avatar (with Farcaster priority)
+        setDisplayAvatar(getUserAvatar(user));
 
         // Load transactions
         const txData = await getUserTransactions(user.id);
         setTransactions(txData);
       } catch (error) {
-        console.error("Error loading transactions:", error);
+        console.error("Error loading user data:", error);
       }
     };
 
-    loadTransactions();
+    loadUserData();
     
     // Refresh every 10 seconds when on profile page
-    const interval = setInterval(loadTransactions, 10000);
+    const interval = setInterval(loadUserData, 10000);
 
     return () => {
       clearInterval(interval);
     };
   }, [address]);
+
+  /**
+   * Handle avatar selection
+   */
+  const handleAvatarSelect = async (avatar: string) => {
+    if (!address) return;
+    
+    try {
+      setSelectedAvatar(avatar);
+      await upsertUser(address, { avatar });
+    } catch (error) {
+      console.error("Error updating avatar:", error);
+    }
+  };
 
   return (
     <div className="profile-container" ref={containerRef}>
@@ -151,6 +185,31 @@ const Profile = () => {
       {showSettings && (
         <div className="settings-panel">
           <h3>Settings</h3>
+          
+          {/* Avatar Picker */}
+          <div className="avatar-picker">
+            <h4>Choose Your Avatar</h4>
+            <div className="avatar-grid">
+              {AVATAR_OPTIONS.map((avatar) => (
+                <button
+                  key={avatar}
+                  className={`avatar-option ${selectedAvatar === avatar ? "selected" : ""}`}
+                  onClick={() => handleAvatarSelect(avatar)}
+                >
+                  <Image
+                    src={avatar}
+                    alt="Avatar option"
+                    width={80}
+                    height={80}
+                  />
+                  {selectedAvatar === avatar && (
+                    <div className="avatar-checkmark">✓</div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="settings-options">
             <button className="settings-option">
               <span>Notifications</span>

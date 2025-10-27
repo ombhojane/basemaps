@@ -11,6 +11,8 @@ export interface User {
   wallet_address: string;
   basename?: string;
   avatar?: string;
+  farcaster_fid?: string;
+  farcaster_pfp?: string;
   latitude?: number;
   longitude?: number;
   last_seen?: string;

@@ -13,6 +13,15 @@ import {
   subscribeToMessages,
 } from "@/lib/supabase-helpers";
 
+// Available avatar options
+const AVATAR_OPTIONS = [
+  "/pfp/pfp1.jpg",
+  "/pfp/pfp2.jpg",
+  "/pfp/pfp3.jpg",
+  "/pfp/pfp4.jpg",
+  "/icon.png",
+];
+
 interface Message {
   id: string;
   text: string;
@@ -74,8 +83,10 @@ const Chat = () => {
         // Get or create user
         let user = await getUserByWallet(address);
         if (!user) {
+          // Assign random avatar to new user
+          const randomAvatar = AVATAR_OPTIONS[Math.floor(Math.random() * AVATAR_OPTIONS.length)];
           user = await upsertUser(address, {
-            avatar: "/icon.png",
+            avatar: randomAvatar,
           });
         }
         setCurrentUserId(user.id);

@@ -12,7 +12,17 @@ import {
   sendMessage,
   updateUserLocation,
   getUsersWithLocations,
+  getUserAvatar,
 } from "@/lib/supabase-helpers";
+
+// Available avatar options
+const AVATAR_OPTIONS = [
+  "/pfp/pfp1.jpg",
+  "/pfp/pfp2.jpg",
+  "/pfp/pfp3.jpg",
+  "/pfp/pfp4.jpg",
+  "/icon.png",
+];
 
 /**
  * Map component with Carto Voyager tiles and Base blue theme
@@ -44,7 +54,9 @@ const Map = () => {
       try {
         let user = await getUserByWallet(address);
         if (!user) {
-          user = await upsertUser(address, { avatar: "/icon.png" });
+          // Assign random avatar to new users
+          const randomAvatar = AVATAR_OPTIONS[Math.floor(Math.random() * AVATAR_OPTIONS.length)];
+          user = await upsertUser(address, { avatar: randomAvatar });
         }
       } catch (error) {
         console.error("Error initializing user:", error);
@@ -69,7 +81,8 @@ const Map = () => {
       // Get or create current user (don't rely on state)
       let currentUser = await getUserByWallet(currentAddress);
       if (!currentUser) {
-        currentUser = await upsertUser(currentAddress, { avatar: "/icon.png" });
+        const randomAvatar = AVATAR_OPTIONS[Math.floor(Math.random() * AVATAR_OPTIONS.length)];
+        currentUser = await upsertUser(currentAddress, { avatar: randomAvatar });
       }
 
       // Get or create the other user
@@ -172,15 +185,16 @@ const Map = () => {
         try {
           const dbUsers = await getUsersWithLocations();
           
+          console.log(`Loading ${dbUsers.length} users on map`);
+          
           dbUsers.forEach((user) => {
-            // Skip current user
-            if (currentUserAddress && user.wallet_address === currentUserAddress) {
-              return;
-            }
+            // Check if this is the current user
+            const isCurrentUser = currentUserAddress && user.wallet_address === currentUserAddress;
 
-            const userName = user.basename || `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`;
-            const userAvatar = user.avatar || "/icon.png";
-            const userIcon = createAvatarMarker(userAvatar, userName);
+            const userName = isCurrentUser ? "You" : (user.basename || `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`);
+            const userAvatar = getUserAvatar(user);
+            console.log(`Creating marker for ${userName} with avatar:`, userAvatar);
+            const userIcon = createAvatarMarker(userAvatar, userName, isCurrentUser);
 
             const marker = L.marker([user.latitude!, user.longitude!], { icon: userIcon })
               .addTo(map)
@@ -291,30 +305,7 @@ const Map = () => {
               }
             }
 
-            // Add current user marker with Base icon
-            const currentUserIcon = createAvatarMarker(
-              "/icon.png",
-              "You",
-              true
-            );
-
-            L.marker([latitude, longitude], { icon: currentUserIcon })
-              .addTo(map)
-              .bindPopup(
-                `
-                <div style="font-family: Inter, sans-serif; padding: 4px;">
-                  <strong style="color: #0052FF; font-size: 14px;">You are here!</strong>
-                  <p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">
-                    Explore based people around you
-                  </p>
-                </div>
-              `,
-                {
-                  className: "custom-popup",
-                }
-              );
-
-            // Load and display database users on map
+            // Load and display ALL users on map (including current user)
             await loadUsersOnMap(currentAddress);
           },
           async (error) => {

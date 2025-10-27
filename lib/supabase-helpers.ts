@@ -28,6 +28,54 @@ export async function upsertUser(walletAddress: string, data?: Partial<User>) {
   return user;
 }
 
+/**
+ * Fetch Farcaster profile image by FID
+ */
+export async function getFarcasterProfileImage(fid: string): Promise<string | null> {
+  try {
+    const response = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`, {
+      headers: {
+        'accept': 'application/json',
+        'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY || 'NEYNAR_API_DOCS'
+      }
+    });
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    if (data.users && data.users[0]?.pfp_url) {
+      return data.users[0].pfp_url;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching Farcaster profile:', error);
+    return null;
+  }
+}
+
+/**
+ * Get best available avatar for user
+ * Priority: Farcaster PFP > Custom Avatar > Random PFP > Default
+ */
+export function getUserAvatar(user: User): string {
+  // First priority: Farcaster profile picture
+  if (user.farcaster_pfp) {
+    console.log(`Using Farcaster PFP for ${user.wallet_address.slice(0, 6)}:`, user.farcaster_pfp);
+    return user.farcaster_pfp;
+  }
+  
+  // Second priority: Custom selected avatar
+  if (user.avatar) {
+    console.log(`Using avatar for ${user.wallet_address.slice(0, 6)}:`, user.avatar);
+    return user.avatar;
+  }
+  
+  // Default fallback
+  console.log(`Using default for ${user.wallet_address.slice(0, 6)}`);
+  return '/icon.png';
+}
+
 export async function getUserByWallet(walletAddress: string) {
   const { data, error } = await supabase
     .from('users')
