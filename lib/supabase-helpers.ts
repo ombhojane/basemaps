@@ -11,7 +11,54 @@ interface RealtimePayload {
 // USER FUNCTIONS
 // =====================================================
 
+/**
+ * Fetch Farcaster profile by wallet address
+ */
+export async function getFarcasterByWallet(walletAddress: string): Promise<{ fid: string; pfp: string } | null> {
+  try {
+    const response = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${walletAddress}`, {
+      headers: {
+        'accept': 'application/json',
+        'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY || 'NEYNAR_API_DOCS'
+      }
+    });
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    if (data && data[walletAddress.toLowerCase()] && data[walletAddress.toLowerCase()][0]) {
+      const user = data[walletAddress.toLowerCase()][0];
+      return {
+        fid: user.fid?.toString() || '',
+        pfp: user.pfp_url || ''
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching Farcaster profile by wallet:', error);
+    return null;
+  }
+}
+
 export async function upsertUser(walletAddress: string, data?: Partial<User>) {
+  // Try to fetch Farcaster profile if not already provided
+  if (!data?.farcaster_fid && !data?.farcaster_pfp) {
+    try {
+      const farcasterData = await getFarcasterByWallet(walletAddress);
+      if (farcasterData) {
+        console.log(`Found Farcaster profile for ${walletAddress.slice(0, 6)}:`, farcasterData);
+        data = {
+          ...data,
+          farcaster_fid: farcasterData.fid,
+          farcaster_pfp: farcasterData.pfp
+        };
+      }
+    } catch {
+      console.log('No Farcaster profile found for wallet');
+    }
+  }
+
   const { data: user, error } = await supabase
     .from('users')
     .upsert({

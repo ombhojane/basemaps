@@ -189,7 +189,7 @@ const Map = () => {
           
           dbUsers.forEach((user) => {
             // Check if this is the current user
-            const isCurrentUser = currentUserAddress && user.wallet_address === currentUserAddress;
+            const isCurrentUser = currentUserAddress ? user.wallet_address === currentUserAddress : false;
 
             const userName = isCurrentUser ? "You" : (user.basename || `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`);
             const userAvatar = getUserAvatar(user);

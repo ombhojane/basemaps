@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { getName } from "@coinbase/onchainkit/identity";
 import { useAccount } from "wagmi";
 import { base } from "viem/chains";
-import { getUserByWallet, upsertUser, getUserTransactions, getUserAvatar } from "@/lib/supabase-helpers";
+import { getUserByWallet, upsertUser, getUserTransactions } from "@/lib/supabase-helpers";
 import Image from "next/image";
 
 interface Transaction {
@@ -36,7 +36,6 @@ const Profile = () => {
   const [isLoadingName, setIsLoadingName] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<string>("/icon.png");
-  const [displayAvatar, setDisplayAvatar] = useState<string>("/icon.png");
   const { address } = useAccount();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -119,9 +118,6 @@ const Profile = () => {
 
         // Set selected avatar (for picker)
         setSelectedAvatar(user.avatar || "/icon.png");
-        
-        // Set display avatar (with Farcaster priority)
-        setDisplayAvatar(getUserAvatar(user));
 
         // Load transactions
         const txData = await getUserTransactions(user.id);

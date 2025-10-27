@@ -5,6 +5,8 @@ import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { useAccount, useBalance, useConnect } from "wagmi";
 import { getName } from "@coinbase/onchainkit/identity";
 import { base } from "viem/chains";
+import { getUserByWallet, getUserAvatar } from "@/lib/supabase-helpers";
+import Image from "next/image";
 
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
@@ -34,6 +36,7 @@ export default function Home() {
   const [showGlassmorphism, setShowGlassmorphism] = useState(false);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
   const [displayName, setDisplayName] = useState<string>("");
+  const [userAvatar, setUserAvatar] = useState<string>("/icon.png");
   const { address } = useAccount();
   const { data: balanceData } = useBalance({ address });
   const { connect, connectors } = useConnect();
@@ -80,29 +83,39 @@ export default function Home() {
   }, [activeTab]);
 
   /**
-   * Fetch Basename for account display
+   * Fetch Basename and avatar for account display
    */
   useEffect(() => {
-    const fetchName = async () => {
+    const fetchUserData = async () => {
       if (!address) {
         setDisplayName("");
+        setUserAvatar("/icon.png");
         return;
       }
 
       try {
+        // Fetch basename
         const name = await getName({ address, chain: base });
         if (name) {
           setDisplayName(name);
         } else {
           setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
         }
+
+        // Fetch user avatar from database
+        const user = await getUserByWallet(address);
+        if (user) {
+          const avatar = getUserAvatar(user);
+          setUserAvatar(avatar);
+          console.log('Profile icon avatar:', avatar);
+        }
       } catch (error) {
-        console.error("Error fetching Basename:", error);
+        console.error("Error fetching user data:", error);
         setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
       }
     };
 
-    fetchName();
+    fetchUserData();
   }, [address]);
 
   return (
@@ -116,23 +129,17 @@ export default function Home() {
         {address ? (
           <div className="profile-icon-container">
             <button
-              className="profile-icon-btn"
+              className="profile-icon-btn profile-icon-avatar"
               onClick={() => setShowAccountDropdown(!showAccountDropdown)}
               aria-label="Account"
             >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
+              <Image
+                src={userAvatar}
+                alt="Profile"
+                width={44}
+                height={44}
+                style={{ objectFit: 'cover', borderRadius: '20px' }}
+              />
             </button>
 
             {showAccountDropdown && (
