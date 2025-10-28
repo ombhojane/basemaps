@@ -323,7 +323,15 @@ const Map = () => {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
             const { latitude, longitude } = position.coords;
-            map.setView([latitude, longitude], 14);
+            
+            // Safely set map view
+            try {
+              if (map && map.getPane('mapPane')) {
+                map.setView([latitude, longitude], 14);
+              }
+            } catch (error) {
+              console.log("Map not ready for setView, skipping...");
+            }
 
             // Save user location to database if wallet is connected
             const currentAddress = addressRef.current;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSendTransaction, useWaitForTransactionReceipt, useAccount, useConnect } from "wagmi";
 import { parseEther } from "viem";
 import Image from "next/image";
@@ -30,6 +30,7 @@ const PaymentModal = ({
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [isCustom, setIsCustom] = useState(false);
+  const savedTransactions = useRef<Set<string>>(new Set());
 
   const { isConnected, address } = useAccount();
   const { connect, connectors, isPending: isConnecting } = useConnect();
@@ -52,8 +53,11 @@ const PaymentModal = ({
    * Stores transaction data in Supabase
    */
   useEffect(() => {
-    if (isSuccess && hash && isOpen && address) {
+    if (isSuccess && hash && isOpen && address && !savedTransactions.current.has(hash)) {
       console.log("Transaction successful:", hash);
+
+      // Mark this transaction as being saved
+      savedTransactions.current.add(hash);
 
       const saveTransaction = async () => {
         try {
@@ -90,7 +94,7 @@ const PaymentModal = ({
         setIsCustom(false);
       }, 2000);
     }
-  }, [isSuccess, hash, amount, recipientName, onClose, isOpen, address]);
+  }, [isSuccess, hash, amount, recipientName, recipientAddress, onClose, isOpen, address]);
 
   /**
    * Handle pay button click
