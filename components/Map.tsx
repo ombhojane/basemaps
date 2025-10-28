@@ -37,6 +37,7 @@ const Map = () => {
     isOpen: false,
     recipientName: "",
     recipientImage: "",
+    recipientAddress: "",
   });
 
   // Keep addressRef in sync with address
@@ -304,6 +305,7 @@ const Map = () => {
                       isOpen: true,
                       recipientName: userName,
                       recipientImage: userAvatar,
+                      recipientAddress: user.wallet_address,
                     });
                     marker.closePopup();
                   };
@@ -378,10 +380,11 @@ const Map = () => {
       <PaymentModal
         isOpen={paymentModal.isOpen}
         onClose={() =>
-          setPaymentModal({ isOpen: false, recipientName: "", recipientImage: "" })
+          setPaymentModal({ isOpen: false, recipientName: "", recipientImage: "", recipientAddress: "" })
         }
         recipientName={paymentModal.recipientName}
         recipientImage={paymentModal.recipientImage}
+        recipientAddress={paymentModal.recipientAddress}
       />
     </>
   );

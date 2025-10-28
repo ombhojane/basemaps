@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
 import Image from "next/image";
+import PaymentModal from "./PaymentModal";
 import {
   getUserByWallet,
   upsertUser,
@@ -35,6 +36,7 @@ interface Conversation {
   userId: string;
   userName: string;
   userAvatar: string;
+  userWalletAddress: string;
   lastMessage: string;
   lastMessageTime: string;
   unread: boolean;
@@ -73,6 +75,7 @@ const Chat = () => {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   /**
    * Initialize user and load conversations from Supabase
@@ -130,6 +133,7 @@ const Chat = () => {
             userId: otherUser.id,
             userName: otherUser.basename || `${otherUser.wallet_address.slice(0, 6)}...${otherUser.wallet_address.slice(-4)}`,
             userAvatar: otherUser.avatar || "/icon.png",
+            userWalletAddress: otherUser.wallet_address,
             lastMessage: (conv.last_message as string) || "",
             lastMessageTime: (conv.last_message_time as string) || (conv.created_at as string),
             unread: false,
@@ -473,6 +477,28 @@ const Chat = () => {
               <h3>{selectedConversation.userName}</h3>
               <span className="chat-status">Online</span>
             </div>
+            
+            {/* Pay button */}
+            <button 
+              className="chat-pay-btn"
+              onClick={() => setIsPaymentModalOpen(true)}
+              aria-label="Send Payment"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                <line x1="1" y1="10" x2="23" y2="10"></line>
+              </svg>
+              Pay
+            </button>
           </div>
 
           {/* Messages */}
@@ -579,6 +605,15 @@ const Chat = () => {
               </button>
             </div>
           </div>
+
+          {/* Payment Modal */}
+          <PaymentModal
+            isOpen={isPaymentModalOpen}
+            onClose={() => setIsPaymentModalOpen(false)}
+            recipientName={selectedConversation.userName}
+            recipientImage={selectedConversation.userAvatar}
+            recipientAddress={selectedConversation.userWalletAddress}
+          />
         </div>
       </div>
     );

@@ -6,7 +6,6 @@ import { parseEther } from "viem";
 import Image from "next/image";
 import { getUserByWallet, upsertUser, addTransaction } from "@/lib/supabase-helpers";
 
-const RECIPIENT_ADDRESS = "0xdc529Ce69Bd28613e23dfb0625B00c7B9f33F8f1";
 const PRESET_AMOUNTS = [0.01, 0.05, 0.1];
 
 interface PaymentModalProps {
@@ -14,6 +13,7 @@ interface PaymentModalProps {
   onClose: () => void;
   recipientName: string;
   recipientImage: string;
+  recipientAddress: string;
 }
 
 /**
@@ -25,6 +25,7 @@ const PaymentModal = ({
   onClose,
   recipientName,
   recipientImage,
+  recipientAddress,
 }: PaymentModalProps) => {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
@@ -66,7 +67,7 @@ const PaymentModal = ({
           await addTransaction({
             hash,
             sender_id: user.id,
-            recipient_address: RECIPIENT_ADDRESS,
+            recipient_address: recipientAddress,
             recipient_name: recipientName,
             amount: amount.toString(),
             status: "success",
@@ -97,7 +98,7 @@ const PaymentModal = ({
   const handlePay = () => {
     if (amount > 0) {
       sendTransaction({
-        to: RECIPIENT_ADDRESS as `0x${string}`,
+        to: recipientAddress as `0x${string}`,
         value: parseEther(amount.toString()),
       });
     }
@@ -128,7 +129,7 @@ const PaymentModal = ({
           <div className="recipient-details">
             <strong>{recipientName}</strong>
             <span className="recipient-address">
-              {RECIPIENT_ADDRESS.slice(0, 6)}...{RECIPIENT_ADDRESS.slice(-4)}
+              {recipientAddress.slice(0, 6)}...{recipientAddress.slice(-4)}
             </span>
           </div>
         </div>
@@ -189,7 +190,7 @@ const PaymentModal = ({
             <div className="summary-row">
               <span>Recipient</span>
               <strong>
-                {RECIPIENT_ADDRESS.slice(0, 6)}...{RECIPIENT_ADDRESS.slice(-4)}
+                {recipientAddress.slice(0, 6)}...{recipientAddress.slice(-4)}
               </strong>
             </div>
           </div>
