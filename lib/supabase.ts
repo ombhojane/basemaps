@@ -10,9 +10,11 @@ export interface User {
   id: string;
   wallet_address: string;
   basename?: string;
+  preferred_name?: string;
   avatar?: string;
   farcaster_fid?: string;
   farcaster_pfp?: string;
+  farcaster_username?: string;
   latitude?: number;
   longitude?: number;
   last_seen?: string;

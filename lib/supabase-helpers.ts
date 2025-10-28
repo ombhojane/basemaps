@@ -139,6 +139,30 @@ export function getUserAvatar(user: User): string {
   return '/icon.png';
 }
 
+/**
+ * Get best available display name for user
+ * Priority: Preferred Name > Basename > Farcaster Username > Wallet Address
+ */
+export function getUserDisplayName(user: User): string {
+  // PRIORITY 1: User's preferred name (custom onboarding input)
+  if (user.preferred_name) {
+    return user.preferred_name;
+  }
+  
+  // PRIORITY 2: Basename (onchain identity)
+  if (user.basename) {
+    return user.basename;
+  }
+  
+  // PRIORITY 3: Farcaster username
+  if (user.farcaster_username) {
+    return user.farcaster_username;
+  }
+  
+  // PRIORITY 4: Shortened wallet address
+  return `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`;
+}
+
 export async function getUserByWallet(walletAddress: string) {
   const { data, error } = await supabase
     .from('users')

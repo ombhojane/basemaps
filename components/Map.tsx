@@ -5,6 +5,7 @@ import { useAccount } from "wagmi";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import PaymentModal from "./PaymentModal";
+import OnboardingModal from "./OnboardingModal";
 import {
   getUserByWallet,
   upsertUser,
@@ -13,7 +14,9 @@ import {
   updateUserLocation,
   getUsersWithLocations,
   getUserAvatar,
+  getUserDisplayName,
 } from "@/lib/supabase-helpers";
+import type { User } from "@/lib/supabase";
 
 // Available avatar options
 const AVATAR_OPTIONS = [
@@ -39,6 +42,11 @@ const Map = () => {
     recipientImage: "",
     recipientAddress: "",
   });
+  const [onboardingModal, setOnboardingModal] = useState({
+    isOpen: false,
+    hasBasename: true,
+    locationDenied: false,
+  });
 
   // Keep addressRef in sync with address
   useEffect(() => {
@@ -46,21 +54,59 @@ const Map = () => {
   }, [address]);
 
   /**
-   * Initialize current user in Supabase and save location
+   * Initialize current user and check if onboarding needed
    */
   useEffect(() => {
     if (!address) return;
 
     const initUser = async () => {
       try {
+        console.log("=== INITIALIZING USER ===");
+        console.log("Wallet address:", address);
+        
         let user = await getUserByWallet(address);
+        console.log("User data from DB:", user);
+        
         if (!user) {
-          // Assign random avatar to new users
+          console.log("New user, creating...");
+          // Create new user with random avatar
           const randomAvatar = AVATAR_OPTIONS[Math.floor(Math.random() * AVATAR_OPTIONS.length)];
           user = await upsertUser(address, { avatar: randomAvatar });
+          console.log("User created:", user);
         }
+
+        // Check if onboarding is needed (after map loads)
+        setTimeout(() => {
+          checkOnboardingNeeded(user);
+        }, 2000);
       } catch (error) {
         console.error("Error initializing user:", error);
+      }
+    };
+
+    const checkOnboardingNeeded = (user: User | null) => {
+      console.log("=== CHECKING ONBOARDING STATUS ===");
+      console.log("User:", user);
+      
+      const hasName = !!user?.basename || !!user?.preferred_name;
+      const hasLocation = !!user?.latitude && !!user?.longitude;
+      
+      console.log("Has name (basename or preferred):", hasName);
+      console.log("Has location (lat/lng):", hasLocation);
+      console.log("Basename:", user?.basename);
+      console.log("Preferred name:", user?.preferred_name);
+      console.log("Latitude:", user?.latitude);
+      console.log("Longitude:", user?.longitude);
+      
+      if (!hasName || !hasLocation) {
+        console.log("⚠️ ONBOARDING NEEDED");
+        setOnboardingModal({
+          isOpen: true,
+          hasBasename: hasName,
+          locationDenied: !hasLocation,
+        });
+      } else {
+        console.log("✓ User fully onboarded");
       }
     };
 
@@ -153,9 +199,9 @@ const Map = () => {
 
   useEffect(() => {
     if (mapRef.current && !mapInstanceRef.current) {
-      // Initialize map with clean settings
+      // Initialize map with Mumbai as default center
       const map = L.map(mapRef.current, {
-        center: [37.7749, -122.4194],
+        center: [19.0760, 72.8777], // Mumbai, India
         zoom: 13,
         zoomControl: false,
         attributionControl: true,
@@ -185,8 +231,7 @@ const Map = () => {
       const loadUsersOnMap = async (currentUserAddress?: string) => {
         try {
           const dbUsers = await getUsersWithLocations();
-          
-          console.log(`Loading ${dbUsers.length} users on map`);
+          console.log(`Loading ${dbUsers.length} users with locations on map`);
           
           // Track used positions to prevent overlap
           const usedPositions: { lat: number; lng: number }[] = [];
@@ -196,9 +241,8 @@ const Map = () => {
             // Check if this is the current user
             const isCurrentUser = currentUserAddress ? user.wallet_address === currentUserAddress : false;
 
-            const userName = isCurrentUser ? "You" : (user.basename || `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`);
+            const userName = isCurrentUser ? "You" : getUserDisplayName(user);
             const userAvatar = getUserAvatar(user);
-            console.log(`Creating marker for ${userName} with avatar:`, userAvatar);
             const userIcon = createAvatarMarker(userAvatar, userName, isCurrentUser);
 
             // Check if position is too close to existing markers and adjust
@@ -318,48 +362,78 @@ const Map = () => {
         }
       };
 
-      // Get user's current location
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
+      // Initialize location and load users
+      const initializeLocation = async () => {
+        // Wait for address to be available (up to 2 seconds)
+        let currentAddress = addressRef.current;
+        let attempts = 0;
+        
+        while (!currentAddress && attempts < 20) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          currentAddress = addressRef.current;
+          attempts++;
+        }
+        
+        let locationSet = false;
+        
+        // Check if user has a saved location first
+        if (currentAddress) {
+          try {
+            const user = await getUserByWallet(currentAddress);
             
-            // Safely set map view
-            try {
-              if (map && map.getPane('mapPane')) {
-                map.setView([latitude, longitude], 14);
-              }
-            } catch (error) {
-              console.log("Map not ready for setView, skipping...");
+            if (user && user.latitude && user.longitude) {
+              console.log(`✓ Using saved location: ${user.latitude}, ${user.longitude}`);
+              locationSet = true;
+              
+              // Center map on saved location
+              map.setView([user.latitude, user.longitude], 14);
+              
+              // Load users on map
+              await loadUsersOnMap(currentAddress);
+              return; // Exit early - we're done!
             }
-
-            // Save user location to database if wallet is connected
-            const currentAddress = addressRef.current;
-            if (currentAddress) {
-              try {
-                await updateUserLocation(currentAddress, latitude, longitude);
-                console.log("Location saved to database");
-              } catch (error) {
-                console.error("Error saving location:", error);
-              }
-            }
-
-            // Load and display ALL users on map (including current user)
-            await loadUsersOnMap(currentAddress);
-          },
-          async (error) => {
-            console.log("Location access denied, using default location", error);
-            
-            // Load and display database users on map even without location access
-            const currentAddress = addressRef.current;
-            await loadUsersOnMap(currentAddress);
+          } catch (err) {
+            console.error("Error loading saved location:", err);
           }
-        );
-      } else {
-        // No geolocation support, just load database users
-        const currentAddress = addressRef.current;
-        loadUsersOnMap(currentAddress);
-      }
+        }
+        
+        // Only try browser geolocation if no saved location
+        if (!locationSet && navigator.geolocation) {
+          console.log("No saved location, requesting browser location...");
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              const { latitude, longitude } = position.coords;
+              console.log(`Browser location: ${latitude}, ${longitude}`);
+              
+              map.setView([latitude, longitude], 14);
+
+              // Save user location to database if wallet is connected
+              if (currentAddress) {
+                try {
+                  await updateUserLocation(currentAddress, latitude, longitude);
+                } catch (error) {
+                  console.error("Error saving location:", error);
+                }
+              }
+
+              await loadUsersOnMap(currentAddress);
+            },
+            async (_error) => {
+              console.log("Location access denied, using default location (Mumbai)");
+              map.setView([19.0760, 72.8777], 13);
+              await loadUsersOnMap(currentAddress);
+            }
+          );
+        } else if (!locationSet) {
+          // No geolocation support and no saved location
+          console.log("No geolocation support, using default location (Mumbai)");
+          map.setView([19.0760, 72.8777], 13);
+          await loadUsersOnMap(currentAddress);
+        }
+      };
+      
+      // Start initialization
+      initializeLocation();
     }
 
     // Cleanup on unmount
@@ -370,6 +444,35 @@ const Map = () => {
       }
     };
   }, []);
+
+  /**
+   * Re-center map when address changes and user has a saved location
+   * This ensures map redirects to user's location after onboarding
+   */
+  useEffect(() => {
+    if (!address || !mapInstanceRef.current) return;
+
+    const checkAndRecenterMap = async () => {
+      try {
+        const user = await getUserByWallet(address);
+        
+        if (user && user.latitude && user.longitude && mapInstanceRef.current) {
+          console.log(`🎯 Re-centering map to saved location: ${user.latitude}, ${user.longitude}`);
+          mapInstanceRef.current.setView([user.latitude, user.longitude], 14, {
+            animate: true,
+            duration: 1
+          });
+        }
+      } catch (err) {
+        console.error("Error re-centering map:", err);
+      }
+    };
+
+    // Delay to allow DB to fully update after onboarding
+    const timeoutId = setTimeout(checkAndRecenterMap, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [address]);
 
   return (
     <>
@@ -385,6 +488,7 @@ const Map = () => {
           bottom: 0,
         }}
       />
+      
       <PaymentModal
         isOpen={paymentModal.isOpen}
         onClose={() =>
@@ -393,6 +497,14 @@ const Map = () => {
         recipientName={paymentModal.recipientName}
         recipientImage={paymentModal.recipientImage}
         recipientAddress={paymentModal.recipientAddress}
+      />
+      
+      <OnboardingModal
+        isOpen={onboardingModal.isOpen}
+        onClose={() => setOnboardingModal({ ...onboardingModal, isOpen: false })}
+        walletAddress={address || ""}
+        hasBasename={onboardingModal.hasBasename}
+        locationDenied={onboardingModal.locationDenied}
       />
     </>
   );

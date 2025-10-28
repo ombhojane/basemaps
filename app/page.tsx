@@ -94,20 +94,35 @@ export default function Home() {
       }
 
       try {
-        // Fetch basename
-        const name = await getName({ address, chain: base });
-        if (name) {
-          setDisplayName(name);
-        } else {
-          setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
-        }
-
-        // Fetch user avatar from database
+        // Fetch user from database
         const user = await getUserByWallet(address);
+        
         if (user) {
+          // Priority: preferred_name > basename > wallet address
+          if (user.preferred_name) {
+            setDisplayName(user.preferred_name);
+          } else {
+            // Try to fetch basename
+            const name = await getName({ address, chain: base });
+            if (name) {
+              setDisplayName(name);
+            } else {
+              setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
+            }
+          }
+          
+          // Set avatar
           const avatar = getUserAvatar(user);
           setUserAvatar(avatar);
           console.log('Profile icon avatar:', avatar);
+        } else {
+          // No user in DB, try basename
+          const name = await getName({ address, chain: base });
+          if (name) {
+            setDisplayName(name);
+          } else {
+            setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
+          }
         }
       } catch (error) {
         console.error("Error fetching user data:", error);

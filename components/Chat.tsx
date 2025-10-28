@@ -12,6 +12,7 @@ import {
   sendMessage,
   subscribeToConversations,
   subscribeToMessages,
+  getUserDisplayName,
 } from "@/lib/supabase-helpers";
 
 // Available avatar options
@@ -124,14 +125,16 @@ const Chat = () => {
             id: string;
             wallet_address: string;
             basename?: string;
+            preferred_name?: string;
             avatar?: string;
+            farcaster_username?: string;
           };
           const messages = await getConversationMessages(conv.id as string);
 
           return {
             id: conv.id as string,
             userId: otherUser.id,
-            userName: otherUser.basename || `${otherUser.wallet_address.slice(0, 6)}...${otherUser.wallet_address.slice(-4)}`,
+            userName: getUserDisplayName(otherUser),
             userAvatar: otherUser.avatar || "/icon.png",
             userWalletAddress: otherUser.wallet_address,
             lastMessage: (conv.last_message as string) || "",
@@ -142,7 +145,7 @@ const Chat = () => {
               text: msg.text,
               timestamp: msg.timestamp,
               senderId: msg.sender_id,
-              senderName: msg.sender_id === userId ? "You" : otherUser.basename || "User",
+              senderName: msg.sender_id === userId ? "You" : getUserDisplayName(otherUser),
             })),
           };
         })
