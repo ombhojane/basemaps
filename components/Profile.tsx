@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getName } from "@coinbase/onchainkit/identity";
 import { useAccount } from "wagmi";
-import { base } from "viem/chains";
-import { getUserByWallet, upsertUser, getUserTransactions } from "@/lib/supabase-helpers";
+import { getUserByWallet, upsertUser, getUserTransactions, getUserDisplayName } from "@/lib/supabase-helpers";
 import Image from "next/image";
 
 interface Transaction {
@@ -40,7 +38,7 @@ const Profile = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   /**
-   * Fetch Basename from Base Mainnet (Basenames only exist on mainnet, not testnet)
+   * Fetch display name (preferred_name > basename > wallet address)
    */
   useEffect(() => {
     const fetchName = async () => {
@@ -53,18 +51,19 @@ const Profile = () => {
       setIsLoadingName(true);
 
       try {
-        // Always check Base Mainnet for Basename (chain ID 8453)
-        // Basenames are only on mainnet, not on Sepolia testnet
-        const name = await getName({ address, chain: base });
+        // Get user from database first
+        const user = await getUserByWallet(address);
         
-        if (name) {
+        if (user) {
+          // Use the same display name logic as everywhere else
+          const name = getUserDisplayName(user);
           setDisplayName(name);
         } else {
-          // Fallback to shortened address if no Basename found
+          // Fallback to wallet address if user doesn't exist
           setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
         }
       } catch (error) {
-        console.error("Error fetching Basename:", error);
+        console.error("Error fetching display name:", error);
         setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
       } finally {
         setIsLoadingName(false);
