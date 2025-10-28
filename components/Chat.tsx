@@ -613,6 +613,8 @@ const Chat = () => {
             recipientName={selectedConversation.userName}
             recipientImage={selectedConversation.userAvatar}
             recipientAddress={selectedConversation.userWalletAddress}
+            conversationId={selectedConversation.id}
+            currentUserId={currentUserId}
           />
         </div>
       </div>

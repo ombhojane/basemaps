@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSendTransaction, useWaitForTransactionReceipt, useAccount, useConnect } from "wagmi";
 import { parseEther } from "viem";
 import Image from "next/image";
-import { getUserByWallet, upsertUser, addTransaction } from "@/lib/supabase-helpers";
+import { getUserByWallet, upsertUser, addTransaction, sendMessage } from "@/lib/supabase-helpers";
 
 const PRESET_AMOUNTS = [0.01, 0.05, 0.1];
 
@@ -14,6 +14,8 @@ interface PaymentModalProps {
   recipientName: string;
   recipientImage: string;
   recipientAddress: string;
+  conversationId?: string;
+  currentUserId?: string | null;
 }
 
 /**
@@ -26,6 +28,8 @@ const PaymentModal = ({
   recipientName,
   recipientImage,
   recipientAddress,
+  conversationId,
+  currentUserId,
 }: PaymentModalProps) => {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
@@ -79,6 +83,17 @@ const PaymentModal = ({
           });
 
           console.log("Transaction saved to Supabase");
+
+          // Send payment message to chat if conversationId exists
+          if (conversationId && currentUserId) {
+            try {
+              const paymentMessage = `💸 Paid ${amount} ETH`;
+              await sendMessage(conversationId, currentUserId, paymentMessage);
+              console.log("Payment message sent to chat");
+            } catch (error) {
+              console.error("Error sending payment message:", error);
+            }
+          }
         } catch (error) {
           console.error("Error saving transaction:", error);
         }
@@ -94,7 +109,7 @@ const PaymentModal = ({
         setIsCustom(false);
       }, 2000);
     }
-  }, [isSuccess, hash, amount, recipientName, recipientAddress, onClose, isOpen, address]);
+  }, [isSuccess, hash, amount, recipientName, recipientAddress, onClose, isOpen, address, conversationId, currentUserId]);
 
   /**
    * Handle pay button click
