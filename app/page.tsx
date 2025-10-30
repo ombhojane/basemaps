@@ -98,17 +98,14 @@ export default function Home() {
         const user = await getUserByWallet(address);
         
         if (user) {
-          // Priority: preferred_name > basename > wallet address
-          if (user.preferred_name) {
+          // Priority: basename > preferred_name > wallet address
+          const name = await getName({ address, chain: base });
+          if (name) {
+            setDisplayName(name);
+          } else if (user.preferred_name) {
             setDisplayName(user.preferred_name);
           } else {
-            // Try to fetch basename
-            const name = await getName({ address, chain: base });
-            if (name) {
-              setDisplayName(name);
-            } else {
-              setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
-            }
+            setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
           }
           
           // Set avatar
