@@ -162,7 +162,7 @@ const OnboardingModal = ({
         </div>
 
         <p className="onboarding-subtitle">
-          Let's set up your profile to get started
+          Lets set up your profile to get started
         </p>
 
         {/* Preferred Name Input */}
