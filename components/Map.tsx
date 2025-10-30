@@ -6,6 +6,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import PaymentModal from "./PaymentModal";
 import OnboardingModal from "./OnboardingModal";
+import RegionSelector from "./RegionSelector";
 import {
   getUserByWallet,
   upsertUser,
@@ -52,6 +53,19 @@ const Map = () => {
   useEffect(() => {
     addressRef.current = address;
   }, [address]);
+
+  /**
+   * Handle region selection from RegionSelector
+   */
+  const handleRegionSelect = (lat: number, lng: number, name: string) => {
+    if (mapInstanceRef.current) {
+      console.log(`Navigating to: ${name} (${lat}, ${lng})`);
+      mapInstanceRef.current.setView([lat, lng], 13, {
+        animate: true,
+        duration: 1,
+      });
+    }
+  };
 
   /**
    * Initialize current user and check if onboarding needed
@@ -512,6 +526,8 @@ const Map = () => {
           bottom: 0,
         }}
       />
+      
+      <RegionSelector onRegionSelect={handleRegionSelect} />
       
       <PaymentModal
         isOpen={paymentModal.isOpen}
