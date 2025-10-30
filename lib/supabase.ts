@@ -15,6 +15,7 @@ export interface User {
   farcaster_fid?: string;
   farcaster_pfp?: string;
   farcaster_username?: string;
+  x_handle?: string;
   latitude?: number;
   longitude?: number;
   last_seen?: string;

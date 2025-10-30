@@ -36,6 +36,8 @@ const Profile = () => {
   const [selectedAvatar, setSelectedAvatar] = useState<string>("/icon.png");
   const { address } = useAccount();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [xHandle, setXHandle] = useState<string>("");
+  const [farcasterUsername, setFarcasterUsername] = useState<string>("");
 
   /**
    * Fetch display name (preferred_name > basename > wallet address)
@@ -55,8 +57,8 @@ const Profile = () => {
         const user = await getUserByWallet(address);
         
         if (user) {
-          // Use the same display name logic as everywhere else
-          const name = getUserDisplayName(user);
+          // Priority: basename > preferred_name > wallet address
+          const name = user.basename || user.preferred_name || `${address.slice(0, 6)}...${address.slice(-4)}`;
           setDisplayName(name);
         } else {
           // Fallback to wallet address if user doesn't exist
@@ -114,6 +116,10 @@ const Profile = () => {
           const randomAvatar = AVATAR_OPTIONS[Math.floor(Math.random() * AVATAR_OPTIONS.length)];
           user = await upsertUser(address, { avatar: randomAvatar });
         }
+
+        // Socials
+        setXHandle(user.x_handle || "");
+        setFarcasterUsername(user.farcaster_username || "");
 
         // Set selected avatar (for picker)
         setSelectedAvatar(user.avatar || "/icon.png");
@@ -225,6 +231,43 @@ const Profile = () => {
               <span>About basemaps</span>
             </button>
           </div>
+
+          {/* Social Handles */}
+          <div className="social-settings">
+            <h4>Social Handles</h4>
+            <div className="social-row">
+              <label>@ on X</label>
+              <input
+                type="text"
+                placeholder="your_handle"
+                value={xHandle}
+                onChange={(e) => setXHandle(e.target.value.replace(/^@/, ''))}
+              />
+              <button
+                className="save-btn"
+                onClick={async () => {
+                  if (!address) return;
+                  await upsertUser(address, { x_handle: xHandle.trim() || null as any });
+                }}
+              >Save</button>
+            </div>
+            <div className="social-row">
+              <label>Farcaster</label>
+              <input
+                type="text"
+                placeholder="username"
+                value={farcasterUsername}
+                onChange={(e) => setFarcasterUsername(e.target.value.replace(/^@/, ''))}
+              />
+              <button
+                className="save-btn"
+                onClick={async () => {
+                  if (!address) return;
+                  await upsertUser(address, { farcaster_username: farcasterUsername.trim() || null as any });
+                }}
+              >Save</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -255,6 +298,71 @@ const Profile = () => {
           ) : (
             <p className="no-wallet-text">No wallet connected</p>
           )}
+
+          {/* Social Handles (under wallet) */}
+          <div style={{ marginTop: 16 }}>
+            <h4 style={{ margin: "0 0 10px 0" }}>Social Handles</h4>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr auto",
+                gap: 12,
+                alignItems: "end",
+              }}
+            >
+              <div style={{ display: "grid", gap: 6 }}>
+                <label style={{ color: "#555", fontSize: 13 }}>@ on X</label>
+                <input
+                  type="text"
+                  placeholder="your_handle"
+                  value={xHandle}
+                  onChange={(e) => setXHandle(e.target.value.replace(/^@/, ''))}
+                  style={{
+                    height: 40,
+                    padding: "0 12px",
+                    borderRadius: 10,
+                    border: "1px solid #e5e7eb",
+                    background: "#fff",
+                  }}
+                />
+              </div>
+              <div style={{ display: "grid", gap: 6 }}>
+                <label style={{ color: "#555", fontSize: 13 }}>Farcaster</label>
+                <input
+                  type="text"
+                  placeholder="username"
+                  value={farcasterUsername}
+                  onChange={(e) => setFarcasterUsername(e.target.value.replace(/^@/, ''))}
+                  style={{
+                    height: 40,
+                    padding: "0 12px",
+                    borderRadius: 10,
+                    border: "1px solid #e5e7eb",
+                    background: "#fff",
+                  }}
+                />
+              </div>
+              <button
+                className="save-btn"
+                onClick={async () => {
+                  if (!address) return;
+                  await upsertUser(address, {
+                    x_handle: xHandle.trim() || null as any,
+                    farcaster_username: farcasterUsername.trim() || null as any,
+                  });
+                }}
+                style={{
+                  height: 40,
+                  padding: "0 18px",
+                  borderRadius: 10,
+                  background: "#0052FF",
+                  color: "#fff",
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                }}
+              >Save</button>
+            </div>
+          </div>
         </div>
       </div>
 

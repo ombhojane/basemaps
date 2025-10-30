@@ -67,7 +67,8 @@ export async function upsertUser(walletAddress: string, data?: Partial<User>) {
       data = {
         ...data,
         farcaster_fid: farcasterData.fid,
-        farcaster_pfp: farcasterData.pfp
+        farcaster_pfp: farcasterData.pfp,
+        farcaster_username: farcasterData.username || data?.farcaster_username
       };
     }
   } catch {

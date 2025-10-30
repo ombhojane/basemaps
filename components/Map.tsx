@@ -257,6 +257,9 @@ const Map = () => {
             const userAvatar = getUserAvatar(user);
             const userIcon = createAvatarMarker(userAvatar, userName, isCurrentUser);
 
+            const xHandle = user.x_handle;
+            const farcaster = user.farcaster_username;
+
             // Check if position is too close to existing markers and adjust
             let lat = user.latitude!;
             let lng = user.longitude!;
@@ -304,6 +307,15 @@ const Map = () => {
                       <span style="font-size: 11px; color: #666;">Building onchain</span>
                     </div>
                   </div>
+                  ${(xHandle || farcaster) ? `
+                  <div style="display: flex; gap: 8px; margin: 6px 0 10px 0;">
+                    ${xHandle ? `<a href="https://x.com/${xHandle}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+                      <span style="display:inline-block;padding:6px 10px;border-radius:8px;border:2px solid #0052FF;color:#0052FF;background:#fff;font-weight:600;font-size:12px;">X</span>
+                    </a>` : ''}
+                    ${farcaster ? `<a href="https://warpcast.com/${farcaster}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+                      <span style="display:inline-block;padding:6px 10px;border-radius:8px;border:2px solid #0052FF;color:#0052FF;background:#fff;font-weight:600;font-size:12px;">Farcaster</span>
+                    </a>` : ''}
+                  </div>` : ''}
                   <div style="display: flex; gap: 8px; margin-top: 8px;">
                     <button class="wave-btn" data-wallet="${user.wallet_address}" style="
                       flex: 1;
