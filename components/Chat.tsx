@@ -522,7 +522,13 @@ const Chat = () => {
                   <div className="message-bubble">
                     {mediaUrl && (
                       <div className="message-media">
-                        <img src={mediaUrl} alt="Shared media" />
+                        <Image 
+                          src={mediaUrl} 
+                          alt="Shared media" 
+                          width={400} 
+                          height={300} 
+                          style={{ width: '100%', height: 'auto' }}
+                        />
                       </div>
                     )}
                     {textWithoutMedia && <p>{textWithoutMedia}</p>}
@@ -540,7 +546,13 @@ const Chat = () => {
             {mediaPreview && (
               <div className="media-preview-container">
                 <div className="media-preview">
-                  <img src={mediaPreview} alt="Preview" />
+                  <Image 
+                    src={mediaPreview} 
+                    alt="Preview" 
+                    width={200} 
+                    height={150}
+                    style={{ width: '100%', height: 'auto' }}
+                  />
                   <button 
                     className="media-preview-close"
                     onClick={handleClearMedia}

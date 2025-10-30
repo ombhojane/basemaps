@@ -166,34 +166,46 @@ const Map = () => {
     const borderWidth = isCurrentUser ? 4 : 3;
     
     const iconHtml = `
-      <div style="
-        width: ${size}px;
-        height: ${size}px;
-        border: ${borderWidth}px solid #0052FF;
-        border-radius: 12px;
-        overflow: hidden;
-        background: white;
-        box-shadow: 0 4px 12px rgba(0, 82, 255, 0.25);
-        cursor: pointer;
-        transition: all 0.2s ease;
-      " class="avatar-marker" data-name="${name}">
-        <img 
-          src="${imagePath}" 
-          alt="${name}"
-          style="
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-          "
-        />
+      <div style="display: flex; flex-direction: column; align-items: center;">
+        <div style="
+          width: ${size}px;
+          height: ${size}px;
+          border: ${borderWidth}px solid #0052FF;
+          border-radius: 12px;
+          overflow: hidden;
+          background: white;
+          box-shadow: 0 4px 12px rgba(0, 82, 255, 0.25);
+          cursor: pointer;
+          transition: all 0.2s ease;
+        " class="avatar-marker" data-name="${name}">
+          <img 
+            src="${imagePath}" 
+            alt="${name}"
+            style="
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+            "
+          />
+        </div>
+        <div style="
+          margin-top: 3px;
+          padding: 4px 8px;
+          color: white;
+          background: #0052ff;
+          font-weight: 600;
+          font-size: 12px;
+          border-radius: 8px;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        ">
+          ${name}
+        </div>
       </div>
     `;
 
     return L.divIcon({
       html: iconHtml,
       className: "custom-avatar-icon",
-      iconSize: [size, size],
-      iconAnchor: [size / 2, size / 2],
     });
   };
 
