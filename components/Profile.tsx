@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
-import { getUserByWallet, upsertUser, getUserTransactions, getUserDisplayName } from "@/lib/supabase-helpers";
+import { getUserByWallet, upsertUser, getUserTransactions } from "@/lib/supabase-helpers";
 import Image from "next/image";
 
 interface Transaction {
@@ -38,6 +38,10 @@ const Profile = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [xHandle, setXHandle] = useState<string>("");
   const [farcasterUsername, setFarcasterUsername] = useState<string>("");
+  const [initialXHandle, setInitialXHandle] = useState<string>("");
+  const [initialFarcasterUsername, setInitialFarcasterUsername] = useState<string>("");
+  const [isSavingSocials, setIsSavingSocials] = useState(false);
+  const [socialsSaveStatus, setSocialsSaveStatus] = useState<"idle" | "success" | "error">("idle");
 
   /**
    * Fetch display name (preferred_name > basename > wallet address)
@@ -120,6 +124,8 @@ const Profile = () => {
         // Socials
         setXHandle(user.x_handle || "");
         setFarcasterUsername(user.farcaster_username || "");
+        setInitialXHandle(user.x_handle || "");
+        setInitialFarcasterUsername(user.farcaster_username || "");
 
         // Set selected avatar (for picker)
         setSelectedAvatar(user.avatar || "/icon.png");
@@ -231,43 +237,6 @@ const Profile = () => {
               <span>About basemaps</span>
             </button>
           </div>
-
-          {/* Social Handles */}
-          <div className="social-settings">
-            <h4>Social Handles</h4>
-            <div className="social-row">
-              <label>@ on X</label>
-              <input
-                type="text"
-                placeholder="your_handle"
-                value={xHandle}
-                onChange={(e) => setXHandle(e.target.value.replace(/^@/, ''))}
-              />
-              <button
-                className="save-btn"
-                onClick={async () => {
-                  if (!address) return;
-                  await upsertUser(address, { x_handle: xHandle.trim() || null as any });
-                }}
-              >Save</button>
-            </div>
-            <div className="social-row">
-              <label>Farcaster</label>
-              <input
-                type="text"
-                placeholder="username"
-                value={farcasterUsername}
-                onChange={(e) => setFarcasterUsername(e.target.value.replace(/^@/, ''))}
-              />
-              <button
-                className="save-btn"
-                onClick={async () => {
-                  if (!address) return;
-                  await upsertUser(address, { farcaster_username: farcasterUsername.trim() || null as any });
-                }}
-              >Save</button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -298,71 +267,166 @@ const Profile = () => {
           ) : (
             <p className="no-wallet-text">No wallet connected</p>
           )}
+        </div>
+      </div>
 
-          {/* Social Handles (under wallet) */}
-          <div style={{ marginTop: 16 }}>
-            <h4 style={{ margin: "0 0 10px 0" }}>Social Handles</h4>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr auto",
-                gap: 12,
-                alignItems: "end",
-              }}
-            >
-              <div style={{ display: "grid", gap: 6 }}>
-                <label style={{ color: "#555", fontSize: 13 }}>@ on X</label>
-                <input
-                  type="text"
-                  placeholder="your_handle"
-                  value={xHandle}
-                  onChange={(e) => setXHandle(e.target.value.replace(/^@/, ''))}
-                  style={{
-                    height: 40,
-                    padding: "0 12px",
-                    borderRadius: 10,
-                    border: "1px solid #e5e7eb",
-                    background: "#fff",
-                  }}
-                />
-              </div>
-              <div style={{ display: "grid", gap: 6 }}>
-                <label style={{ color: "#555", fontSize: 13 }}>Farcaster</label>
-                <input
-                  type="text"
-                  placeholder="username"
-                  value={farcasterUsername}
-                  onChange={(e) => setFarcasterUsername(e.target.value.replace(/^@/, ''))}
-                  style={{
-                    height: 40,
-                    padding: "0 12px",
-                    borderRadius: 10,
-                    border: "1px solid #e5e7eb",
-                    background: "#fff",
-                  }}
-                />
-              </div>
-              <button
-                className="save-btn"
-                onClick={async () => {
-                  if (!address) return;
-                  await upsertUser(address, {
-                    x_handle: xHandle.trim() || null as any,
-                    farcaster_username: farcasterUsername.trim() || null as any,
-                  });
-                }}
-                style={{
-                  height: 40,
-                  padding: "0 18px",
-                  borderRadius: 10,
-                  background: "#0052FF",
-                  color: "#fff",
-                  fontWeight: 600,
-                  whiteSpace: "nowrap",
-                }}
-              >Save</button>
+      {/* Social Handles Section */}
+      <div className="profile-section">
+        <h3>Social Handles</h3>
+        <div className="social-handles-card">
+          <div className="social-input-group">
+            <div className="social-label-row">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 4l11.733 16h4.267l-11.733 -16z" />
+                <path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" />
+              </svg>
+              <label>X (Twitter)</label>
             </div>
+            <div className="social-input-wrapper">
+              <input
+                type="text"
+                className={`social-input ${xHandle !== initialXHandle ? 'changed' : ''}`}
+                placeholder="your_handle"
+                value={xHandle}
+                onChange={(e) => {
+                  setXHandle(e.target.value.replace(/^@/, ''));
+                  setSocialsSaveStatus("idle");
+                }}
+              />
+              {xHandle !== initialXHandle && (
+                <span className="change-indicator">●</span>
+              )}
+            </div>
+            <p className="social-hint">Your X username (without @)</p>
           </div>
+
+          <div className="social-input-group">
+            <div className="social-label-row">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+              </svg>
+              <label>Farcaster</label>
+            </div>
+            <div className="social-input-wrapper">
+              <input
+                type="text"
+                className={`social-input ${farcasterUsername !== initialFarcasterUsername ? 'changed' : ''}`}
+                placeholder="username"
+                value={farcasterUsername}
+                onChange={(e) => {
+                  setFarcasterUsername(e.target.value.replace(/^@/, ''));
+                  setSocialsSaveStatus("idle");
+                }}
+              />
+              {farcasterUsername !== initialFarcasterUsername && (
+                <span className="change-indicator">●</span>
+              )}
+            </div>
+            <p className="social-hint">Your Farcaster username (without @)</p>
+          </div>
+
+          {/* Status Message */}
+          {socialsSaveStatus === "success" && (
+            <div className="social-status-message success">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Social handles saved successfully!</span>
+            </div>
+          )}
+          {socialsSaveStatus === "error" && (
+            <div className="social-status-message error">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+              <span>Failed to save. Please try again.</span>
+            </div>
+          )}
+
+          <button
+            className={`social-save-btn ${
+              xHandle === initialXHandle && farcasterUsername === initialFarcasterUsername 
+                ? 'disabled' 
+                : socialsSaveStatus === "success" 
+                ? 'success' 
+                : ''
+            }`}
+            disabled={
+              isSavingSocials || 
+              (xHandle === initialXHandle && farcasterUsername === initialFarcasterUsername)
+            }
+            onClick={async () => {
+              if (!address) return;
+              
+              setIsSavingSocials(true);
+              setSocialsSaveStatus("idle");
+              
+              try {
+                await upsertUser(address, {
+                  x_handle: xHandle.trim() || undefined,
+                  farcaster_username: farcasterUsername.trim() || undefined,
+                });
+                
+                // Update initial values after successful save
+                setInitialXHandle(xHandle.trim());
+                setInitialFarcasterUsername(farcasterUsername.trim());
+                setSocialsSaveStatus("success");
+                
+                // Clear success message after 3 seconds
+                setTimeout(() => {
+                  setSocialsSaveStatus("idle");
+                }, 3000);
+              } catch (error) {
+                console.error("Error saving social handles:", error);
+                setSocialsSaveStatus("error");
+                
+                // Clear error message after 4 seconds
+                setTimeout(() => {
+                  setSocialsSaveStatus("idle");
+                }, 4000);
+              } finally {
+                setIsSavingSocials(false);
+              }
+            }}
+          >
+            {isSavingSocials ? (
+              <>
+                <span className="btn-spinner"></span>
+                Saving...
+              </>
+            ) : socialsSaveStatus === "success" ? (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Saved!
+              </>
+            ) : xHandle === initialXHandle && farcasterUsername === initialFarcasterUsername ? (
+              "No Changes"
+            ) : (
+              "Save Social Handles"
+            )}
+          </button>
         </div>
       </div>
 
