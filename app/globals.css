@@ -634,6 +634,38 @@
     background: var(--base-white);
   }
 
+  /* Heatmap Layer Styles */
+  .leaflet-heatmap-layer {
+    transition: opacity 0.3s ease-out;
+  }
+
+  /* Marker Layer Group Transition */
+  .leaflet-marker-pane {
+    transition: opacity 0.3s ease-out;
+  }
+
+  /* Heatmap fade effect during zoom transitions */
+  .heatmap-hidden {
+    opacity: 0 !important;
+    pointer-events: none;
+  }
+
+  .heatmap-visible {
+    opacity: 1;
+  }
+
+  /* Markers fade effect during zoom transitions */
+  .markers-hidden .leaflet-marker-icon {
+    opacity: 0 !important;
+    pointer-events: none;
+    transition: opacity 0.3s ease-out;
+  }
+
+  .markers-visible .leaflet-marker-icon {
+    opacity: 1;
+    transition: opacity 0.3s ease-out;
+  }
+
   /* Clean zoom controls - Base blue accents */
   .leaflet-control-zoom {
     border: none !important;
