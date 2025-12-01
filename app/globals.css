@@ -3209,11 +3209,11 @@
   }
 
   /* ============================================
-     SQUAD MODAL STYLES
+     SQUAD MODAL STYLES - Modern Minimal Design
      ============================================ */
 
   .squad-modal {
-    max-width: 440px;
+    max-width: 420px;
   }
 
   .squad-modal-title {
@@ -3223,51 +3223,51 @@
   }
 
   .squad-modal-title h3 {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--base-blue);
     margin: 0;
+    letter-spacing: -0.3px;
   }
 
   .squad-modal-icon svg {
     display: block;
-    filter: drop-shadow(0 2px 4px rgba(0, 82, 255, 0.2));
   }
 
   .squad-modal-location {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--base-gray-600);
-    margin-bottom: 16px;
+    margin: 8px 0 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .squad-modal-description {
     font-size: 14px;
     color: var(--base-gray-600);
     line-height: 1.6;
-    margin: 0 0 16px 0;
-    padding: 12px 16px;
-    background: var(--base-gray-50);
-    border-radius: 12px;
-    border-left: 3px solid var(--base-blue);
+    margin: 0 0 24px 0;
+    padding: 0;
   }
 
   .squad-modal-stats {
     display: flex;
-    gap: 24px;
-    margin-bottom: 20px;
-    padding: 16px;
-    background: linear-gradient(135deg, rgba(0, 82, 255, 0.05), rgba(0, 82, 255, 0.1));
-    border-radius: 12px;
+    gap: 32px;
+    margin-bottom: 24px;
+    padding: 20px 0;
+    border-top: 1px solid var(--base-gray-200);
+    border-bottom: 1px solid var(--base-gray-200);
   }
 
   .squad-modal-stat {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    gap: 4px;
   }
 
   .squad-modal-stat .stat-number {
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 700;
     color: var(--base-blue);
     line-height: 1;
@@ -3276,46 +3276,52 @@
   .squad-modal-stat .stat-label {
     font-size: 12px;
     color: var(--base-gray-600);
-    margin-top: 4px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .squad-modal-section {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
   }
 
   .squad-modal-section h4 {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
-    color: var(--base-gray-900);
+    color: var(--base-gray-600);
     margin: 0 0 12px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .squad-members-list {
-    max-height: 200px;
+    max-height: 240px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
   }
 
   .squad-member-item {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 12px;
-    background: var(--base-gray-50);
-    border-radius: 10px;
-    transition: background 0.2s ease;
+    padding: 12px;
+    background: white;
+    border: 1px solid var(--base-gray-200);
+    border-radius: 12px;
+    transition: all 0.2s ease;
   }
 
   .squad-member-item:hover {
-    background: var(--base-gray-100);
+    border-color: var(--base-blue);
+    box-shadow: 0 2px 8px rgba(0, 82, 255, 0.1);
   }
 
   .squad-member-avatar-large {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
     border: 2px solid var(--base-blue);
     object-fit: cover;
   }
@@ -3328,7 +3334,7 @@
   }
 
   .squad-member-name {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--base-gray-900);
   }
@@ -3336,21 +3342,24 @@
   .squad-member-role {
     font-size: 11px;
     color: var(--base-blue);
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
   }
 
   .squad-no-members {
     font-size: 14px;
     color: var(--base-gray-600);
     text-align: center;
-    padding: 24px;
+    padding: 32px 20px;
     background: var(--base-gray-50);
     border-radius: 12px;
     margin: 0;
+    border: 1px dashed var(--base-gray-300);
   }
 
   .squad-modal-actions {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
   }
 
   .squad-modal-btn {
@@ -3376,22 +3385,20 @@
 
   .squad-modal-btn.join:hover:not(:disabled) {
     background: #0041CC;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(0, 82, 255, 0.3);
   }
 
   .squad-modal-btn.leave {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-    border: 2px solid #ef4444;
+    background: white;
+    color: var(--base-blue);
+    border: 2px solid var(--base-blue);
   }
 
   .squad-modal-btn.leave:hover:not(:disabled) {
-    background: rgba(239, 68, 68, 0.15);
+    background: rgba(0, 82, 255, 0.05);
   }
 
   .squad-modal-btn:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
@@ -3399,16 +3406,17 @@
     text-align: center;
     font-size: 14px;
     color: var(--base-gray-600);
-    padding: 16px;
+    padding: 20px;
     background: var(--base-gray-50);
     border-radius: 12px;
     margin: 0;
+    border: 1px solid var(--base-gray-200);
   }
 
   .squad-modal-links {
     display: flex;
     gap: 10px;
-    padding-top: 16px;
+    padding-top: 20px;
     border-top: 1px solid var(--base-gray-200);
   }
 
@@ -3424,26 +3432,14 @@
     font-weight: 600;
     text-decoration: none;
     transition: all 0.2s ease;
+    background: white;
+    border: 1px solid var(--base-gray-200);
+    color: var(--base-gray-900);
   }
 
-  .squad-modal-link.telegram {
-    background: rgba(0, 136, 204, 0.1);
-    color: #0088CC;
-  }
-
-  .squad-modal-link.telegram:hover {
-    background: rgba(0, 136, 204, 0.2);
-    transform: translateY(-1px);
-  }
-
-  .squad-modal-link.twitter {
-    background: rgba(29, 155, 240, 0.1);
-    color: #1D9BF0;
-  }
-
-  .squad-modal-link.twitter:hover {
-    background: rgba(29, 155, 240, 0.2);
-    transform: translateY(-1px);
+  .squad-modal-link:hover {
+    border-color: var(--base-blue);
+    color: var(--base-blue);
   }
 
   .squad-not-found {
