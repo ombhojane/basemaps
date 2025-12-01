@@ -5,7 +5,7 @@ import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { useAccount, useBalance, useConnect } from "wagmi";
 import { getName } from "@coinbase/onchainkit/identity";
 import { base } from "viem/chains";
-import { getUserByWallet, getUserAvatar } from "@/lib/supabase-helpers";
+import { getUserByWallet, getUserAvatar, upsertUser } from "@/lib/supabase-helpers";
 import Image from "next/image";
 
 const Map = dynamic(() => import("@/components/Map"), {
@@ -94,32 +94,31 @@ export default function Home() {
       }
 
       try {
-        // Fetch user from database
+        // Get user from database
         const user = await getUserByWallet(address);
         
+        // Fetch basename from chain
+        const basename = await getName({ address, chain: base });
+        
+        // Save basename to database if we got one and user exists
+        if (basename && user) {
+          await upsertUser(address, { basename });
+        }
+        
+        // Priority: basename > preferred_name > wallet address
+        if (basename) {
+          setDisplayName(basename);
+        } else if (user?.preferred_name) {
+          setDisplayName(user.preferred_name);
+        } else {
+          setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
+        }
+        
+        // Set avatar if user exists in DB
         if (user) {
-          // Priority: basename > preferred_name > wallet address
-          const name = await getName({ address, chain: base });
-          if (name) {
-            setDisplayName(name);
-          } else if (user.preferred_name) {
-            setDisplayName(user.preferred_name);
-          } else {
-            setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
-          }
-          
-          // Set avatar
           const avatar = getUserAvatar(user);
           setUserAvatar(avatar);
           console.log('Profile icon avatar:', avatar);
-        } else {
-          // No user in DB, try basename
-          const name = await getName({ address, chain: base });
-          if (name) {
-            setDisplayName(name);
-          } else {
-            setDisplayName(`${address.slice(0, 6)}...${address.slice(-4)}`);
-          }
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
