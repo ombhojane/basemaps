@@ -17,11 +17,18 @@ import {
   getUsersWithLocations,
   getUserAvatar,
   getUserDisplayName,
+  getSquadsWithMemberCount,
+  joinSquad,
+  leaveSquad,
+  isSquadMember,
 } from "@/lib/supabase-helpers";
-import type { User } from "@/lib/supabase";
+import type { User, SquadWithMembers } from "@/lib/supabase";
+import { createSquadMarkerIcon } from "./SquadMarker";
+import SquadModal from "./SquadModal";
 
-// Zoom threshold for switching between heatmap and markers
-const ZOOM_THRESHOLD = 13;
+// Zoom thresholds for layer visibility
+const ZOOM_THRESHOLD_MARKERS = 13;  // Show user markers at this zoom and above
+const ZOOM_THRESHOLD_SQUADS = 10;   // Show squad markers at this zoom and above
 
 // Blue-white gradient for heatmap (Base brand colors)
 const HEATMAP_GRADIENT: { [key: number]: string } = {
@@ -52,8 +59,12 @@ const Map = () => {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const heatLayerRef = useRef<L.HeatLayer | null>(null);
   const markerLayerRef = useRef<L.LayerGroup | null>(null);
+  const squadLayerRef = useRef<L.LayerGroup | null>(null);
   const usersDataRef = useRef<User[]>([]);
+  const squadsDataRef = useRef<SquadWithMembers[]>([]);
   const addressRef = useRef(address);
+  const currentUserIdRef = useRef<string | null>(null);
+  
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
     recipientName: "",
@@ -65,6 +76,11 @@ const Map = () => {
     hasBasename: true,
     locationDenied: false,
   });
+  const [squadModal, setSquadModal] = useState({
+    isOpen: false,
+    squadId: null as string | null,
+  });
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Keep addressRef in sync with address
   useEffect(() => {
@@ -270,9 +286,59 @@ const Map = () => {
 
       mapInstanceRef.current = map;
 
-      // Create marker layer group
+      // Create marker layer group for users
       const markerLayer = L.layerGroup();
       markerLayerRef.current = markerLayer;
+
+      // Create layer group for squads
+      const squadLayer = L.layerGroup();
+      squadLayerRef.current = squadLayer;
+
+      /**
+       * Creates squad markers and adds them to the squad layer
+       */
+      const createSquadMarkers = (squads: SquadWithMembers[]) => {
+        // Clear existing squad markers
+        squadLayer.clearLayers();
+
+        squads.forEach((squad) => {
+          if (!squad.latitude || !squad.longitude) return;
+
+          const squadIcon = createSquadMarkerIcon(squad);
+          const marker = L.marker([squad.latitude, squad.longitude], { icon: squadIcon });
+
+          // Add click handler to open squad modal
+          marker.on('click', () => {
+            setSquadModal({
+              isOpen: true,
+              squadId: squad.id,
+            });
+          });
+
+          // Add marker to squad layer
+          squadLayer.addLayer(marker);
+        });
+
+        console.log(`Created ${squads.length} squad markers`);
+      };
+
+      /**
+       * Loads squads from database and displays on map
+       */
+      const loadSquadsOnMap = async () => {
+        try {
+          const squads = await getSquadsWithMemberCount();
+          console.log(`Loading ${squads.length} squads on map`);
+          
+          // Store squads data
+          squadsDataRef.current = squads;
+
+          // Create squad markers
+          createSquadMarkers(squads);
+        } catch (error) {
+          console.error("Error loading squads on map:", error);
+        }
+      };
 
       /**
        * Creates heatmap layer from user locations
@@ -444,15 +510,31 @@ const Map = () => {
       /**
        * Updates layer visibility based on current zoom level
        * Uses CSS transitions for smooth layer switching
+       * - Zoom < 10: Only heatmap
+       * - Zoom 10-13: Heatmap + Squad markers
+       * - Zoom >= 13: Squad markers + User markers (no heatmap)
        */
       const updateLayerVisibility = () => {
         const currentZoom = map.getZoom();
-        const showMarkers = currentZoom >= ZOOM_THRESHOLD;
+        const showSquads = currentZoom >= ZOOM_THRESHOLD_SQUADS;
+        const showMarkers = currentZoom >= ZOOM_THRESHOLD_MARKERS;
 
         // Get canvas element for heatmap opacity transitions
         const heatmapCanvas = mapRef.current?.querySelector('canvas') as HTMLCanvasElement;
         const container = mapRef.current;
 
+        // Handle squad layer visibility (show at zoom >= 10)
+        if (showSquads) {
+          if (squadLayerRef.current && !map.hasLayer(squadLayerRef.current)) {
+            squadLayerRef.current.addTo(map);
+          }
+        } else {
+          if (squadLayerRef.current && map.hasLayer(squadLayerRef.current)) {
+            squadLayerRef.current.remove();
+          }
+        }
+
+        // Handle user markers and heatmap (same as before)
         if (showMarkers) {
           // Transition to markers view
           // First ensure markers layer is added
@@ -565,8 +647,13 @@ const Map = () => {
               // Center map on saved location
               map.setView([user.latitude, user.longitude], 14);
               
-              // Load users on map
+              // Store current user id for squad membership checks
+              currentUserIdRef.current = user.id;
+              setCurrentUserId(user.id);
+              
+              // Load users and squads on map
               await loadUsersOnMap(currentAddress);
+              await loadSquadsOnMap();
               return; // Exit early - we're done!
             }
           } catch (err) {
@@ -588,17 +675,24 @@ const Map = () => {
               if (currentAddress) {
                 try {
                   await updateUserLocation(currentAddress, latitude, longitude);
+                  const user = await getUserByWallet(currentAddress);
+                  if (user) {
+                    currentUserIdRef.current = user.id;
+                    setCurrentUserId(user.id);
+                  }
                 } catch (error) {
                   console.error("Error saving location:", error);
                 }
               }
 
               await loadUsersOnMap(currentAddress);
+              await loadSquadsOnMap();
             },
             async (_error) => {
               console.log("Location access denied, using default location (Mumbai)");
               map.setView([19.0760, 72.8777], 13);
               await loadUsersOnMap(currentAddress);
+              await loadSquadsOnMap();
             }
           );
         } else if (!locationSet) {
@@ -606,6 +700,7 @@ const Map = () => {
           console.log("No geolocation support, using default location (Mumbai)");
           map.setView([19.0760, 72.8777], 13);
           await loadUsersOnMap(currentAddress);
+          await loadSquadsOnMap();
         }
       };
       
@@ -684,6 +779,34 @@ const Map = () => {
         walletAddress={address || ""}
         hasBasename={onboardingModal.hasBasename}
         locationDenied={onboardingModal.locationDenied}
+      />
+      
+      <SquadModal
+        isOpen={squadModal.isOpen}
+        onClose={() => setSquadModal({ isOpen: false, squadId: null })}
+        squadId={squadModal.squadId}
+        currentUserId={currentUserId}
+        onMembershipChange={() => {
+          // Refresh squad markers when membership changes
+          if (squadsDataRef.current.length > 0 && mapInstanceRef.current) {
+            getSquadsWithMemberCount().then(squads => {
+              squadsDataRef.current = squads;
+              // Re-create squad markers with updated counts
+              if (squadLayerRef.current) {
+                squadLayerRef.current.clearLayers();
+                squads.forEach((squad) => {
+                  if (!squad.latitude || !squad.longitude) return;
+                  const squadIcon = createSquadMarkerIcon(squad);
+                  const marker = L.marker([squad.latitude, squad.longitude], { icon: squadIcon });
+                  marker.on('click', () => {
+                    setSquadModal({ isOpen: true, squadId: squad.id });
+                  });
+                  squadLayerRef.current?.addLayer(marker);
+                });
+              }
+            });
+          }
+        }}
       />
     </>
   );

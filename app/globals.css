@@ -2935,4 +2935,542 @@
     cursor: not-allowed;
   }
 
+  /* ============================================
+     SQUAD MARKER STYLES
+     ============================================ */
+
+  .squad-marker-icon {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  .squad-marker-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .squad-marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .squad-marker:hover {
+    transform: scale(1.1);
+  }
+
+  .squad-icon-wrapper {
+    position: relative;
+    filter: drop-shadow(0 4px 12px rgba(0, 82, 255, 0.4));
+  }
+
+  .squad-icon-wrapper svg {
+    display: block;
+  }
+
+  .squad-member-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    background: #10B981;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+
+  .squad-name-label {
+    margin-top: 4px;
+    padding: 4px 10px;
+    background: var(--base-blue);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 8px;
+    white-space: nowrap;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 2px 8px rgba(0, 82, 255, 0.3);
+  }
+
+  /* Squad Popup Styles */
+  .squad-popup {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    min-width: 260px;
+    max-width: 320px;
+  }
+
+  .squad-popup-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .squad-popup-icon {
+    flex-shrink: 0;
+  }
+
+  .squad-popup-icon svg {
+    display: block;
+    filter: drop-shadow(0 2px 4px rgba(0, 82, 255, 0.2));
+  }
+
+  .squad-popup-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .squad-popup-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--base-blue);
+    margin: 0 0 4px 0;
+    line-height: 1.2;
+  }
+
+  .squad-popup-location {
+    font-size: 12px;
+    color: var(--base-gray-600);
+    margin: 0;
+  }
+
+  .squad-popup-description {
+    font-size: 13px;
+    color: var(--base-gray-600);
+    line-height: 1.5;
+    margin: 0 0 12px 0;
+  }
+
+  .squad-popup-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: var(--base-gray-50);
+    border-radius: 10px;
+  }
+
+  .squad-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .squad-stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--base-blue);
+  }
+
+  .squad-stat-label {
+    font-size: 12px;
+    color: var(--base-gray-600);
+  }
+
+  .squad-popup-members {
+    margin-bottom: 12px;
+  }
+
+  .squad-members-avatars {
+    display: flex;
+    align-items: center;
+  }
+
+  .squad-member-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid white;
+    object-fit: cover;
+    margin-left: -8px;
+    transition: transform 0.2s ease;
+  }
+
+  .squad-member-avatar:first-child {
+    margin-left: 0;
+  }
+
+  .squad-member-avatar:hover {
+    transform: scale(1.15);
+    z-index: 10;
+  }
+
+  .squad-members-more {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--base-blue);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: -8px;
+    border: 2px solid white;
+  }
+
+  .squad-popup-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .squad-action-btn {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    border: none;
+  }
+
+  .squad-action-btn.join {
+    background: var(--base-blue);
+    color: white;
+  }
+
+  .squad-action-btn.join:hover {
+    background: #0041CC;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 82, 255, 0.3);
+  }
+
+  .squad-action-btn.joined {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10B981;
+    border: 2px solid #10B981;
+  }
+
+  .squad-action-btn.joined:hover {
+    background: rgba(16, 185, 129, 0.15);
+  }
+
+  .squad-action-btn.details {
+    background: var(--base-gray-100);
+    color: var(--base-gray-900);
+    border: 1px solid var(--base-gray-200);
+  }
+
+  .squad-action-btn.details:hover {
+    background: var(--base-gray-200);
+  }
+
+  .squad-popup-links {
+    display: flex;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--base-gray-200);
+  }
+
+  .squad-link {
+    flex: 1;
+    padding: 8px 12px;
+    text-align: center;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .squad-link.telegram {
+    background: rgba(0, 136, 204, 0.1);
+    color: #0088CC;
+  }
+
+  .squad-link.telegram:hover {
+    background: rgba(0, 136, 204, 0.2);
+  }
+
+  .squad-link.twitter {
+    background: rgba(29, 155, 240, 0.1);
+    color: #1D9BF0;
+  }
+
+  .squad-link.twitter:hover {
+    background: rgba(29, 155, 240, 0.2);
+  }
+
+  /* ============================================
+     SQUAD MODAL STYLES
+     ============================================ */
+
+  .squad-modal {
+    max-width: 440px;
+  }
+
+  .squad-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .squad-modal-title h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--base-blue);
+    margin: 0;
+  }
+
+  .squad-modal-icon svg {
+    display: block;
+    filter: drop-shadow(0 2px 4px rgba(0, 82, 255, 0.2));
+  }
+
+  .squad-modal-location {
+    font-size: 14px;
+    color: var(--base-gray-600);
+    margin-bottom: 16px;
+  }
+
+  .squad-modal-description {
+    font-size: 14px;
+    color: var(--base-gray-600);
+    line-height: 1.6;
+    margin: 0 0 16px 0;
+    padding: 12px 16px;
+    background: var(--base-gray-50);
+    border-radius: 12px;
+    border-left: 3px solid var(--base-blue);
+  }
+
+  .squad-modal-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(0, 82, 255, 0.05), rgba(0, 82, 255, 0.1));
+    border-radius: 12px;
+  }
+
+  .squad-modal-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .squad-modal-stat .stat-number {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--base-blue);
+    line-height: 1;
+  }
+
+  .squad-modal-stat .stat-label {
+    font-size: 12px;
+    color: var(--base-gray-600);
+    margin-top: 4px;
+  }
+
+  .squad-modal-section {
+    margin-bottom: 20px;
+  }
+
+  .squad-modal-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--base-gray-900);
+    margin: 0 0 12px 0;
+  }
+
+  .squad-members-list {
+    max-height: 200px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .squad-member-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--base-gray-50);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+
+  .squad-member-item:hover {
+    background: var(--base-gray-100);
+  }
+
+  .squad-member-avatar-large {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 2px solid var(--base-blue);
+    object-fit: cover;
+  }
+
+  .squad-member-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .squad-member-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--base-gray-900);
+  }
+
+  .squad-member-role {
+    font-size: 11px;
+    color: var(--base-blue);
+    font-weight: 500;
+  }
+
+  .squad-no-members {
+    font-size: 14px;
+    color: var(--base-gray-600);
+    text-align: center;
+    padding: 24px;
+    background: var(--base-gray-50);
+    border-radius: 12px;
+    margin: 0;
+  }
+
+  .squad-modal-actions {
+    margin-bottom: 16px;
+  }
+
+  .squad-modal-btn {
+    width: 100%;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .squad-modal-btn.join {
+    background: var(--base-blue);
+    color: white;
+  }
+
+  .squad-modal-btn.join:hover:not(:disabled) {
+    background: #0041CC;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 82, 255, 0.3);
+  }
+
+  .squad-modal-btn.leave {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 2px solid #ef4444;
+  }
+
+  .squad-modal-btn.leave:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.15);
+  }
+
+  .squad-modal-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .squad-connect-prompt {
+    text-align: center;
+    font-size: 14px;
+    color: var(--base-gray-600);
+    padding: 16px;
+    background: var(--base-gray-50);
+    border-radius: 12px;
+    margin: 0;
+  }
+
+  .squad-modal-links {
+    display: flex;
+    gap: 10px;
+    padding-top: 16px;
+    border-top: 1px solid var(--base-gray-200);
+  }
+
+  .squad-modal-link {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .squad-modal-link.telegram {
+    background: rgba(0, 136, 204, 0.1);
+    color: #0088CC;
+  }
+
+  .squad-modal-link.telegram:hover {
+    background: rgba(0, 136, 204, 0.2);
+    transform: translateY(-1px);
+  }
+
+  .squad-modal-link.twitter {
+    background: rgba(29, 155, 240, 0.1);
+    color: #1D9BF0;
+  }
+
+  .squad-modal-link.twitter:hover {
+    background: rgba(29, 155, 240, 0.2);
+    transform: translateY(-1px);
+  }
+
+  .squad-not-found {
+    text-align: center;
+    padding: 32px;
+  }
+
+  .squad-not-found p {
+    font-size: 16px;
+    color: var(--base-gray-600);
+    margin: 0 0 16px 0;
+  }
+
+  .modal-close-btn {
+    padding: 12px 24px;
+    background: var(--base-gray-100);
+    color: var(--base-gray-900);
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .modal-close-btn:hover {
+    background: var(--base-gray-200);
+  }
+
 }

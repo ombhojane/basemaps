@@ -1,4 +1,4 @@
-import { supabase, User, Transaction } from './supabase';
+import { supabase, User, Transaction, Squad, SquadMember, SquadWithMembers } from './supabase';
 
 // Supabase realtime payload type
 interface RealtimePayload {
@@ -393,6 +393,207 @@ export async function getUserMeetups(userId: string) {
 
   if (error) throw error;
   return data?.map(item => item.meetup) || [];
+}
+
+// =====================================================
+// SQUAD (COMMUNITY) FUNCTIONS
+// =====================================================
+
+/**
+ * Get all active squads with their locations
+ * Used for displaying squad pins on the map
+ */
+export async function getAllSquads(): Promise<Squad[]> {
+  const { data, error } = await supabase
+    .from('squads')
+    .select('*')
+    .eq('is_active', true)
+    .order('name', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Get squads with member count
+ * Optimized for map display
+ */
+export async function getSquadsWithMemberCount(): Promise<SquadWithMembers[]> {
+  const { data: squads, error: squadsError } = await supabase
+    .from('squads')
+    .select('*')
+    .eq('is_active', true)
+    .order('name', { ascending: true });
+
+  if (squadsError) throw squadsError;
+  if (!squads) return [];
+
+  // Get member counts for all squads
+  const squadIds = squads.map(s => s.id);
+  const { data: memberCounts, error: countError } = await supabase
+    .from('squad_members')
+    .select('squad_id')
+    .in('squad_id', squadIds);
+
+  if (countError) throw countError;
+
+  // Count members per squad
+  const countMap: Record<string, number> = {};
+  memberCounts?.forEach(m => {
+    countMap[m.squad_id] = (countMap[m.squad_id] || 0) + 1;
+  });
+
+  // Merge counts into squads
+  return squads.map(squad => ({
+    ...squad,
+    member_count: countMap[squad.id] || 0
+  }));
+}
+
+/**
+ * Get a single squad with its members
+ */
+export async function getSquadWithMembers(squadId: string): Promise<SquadWithMembers | null> {
+  const { data: squad, error: squadError } = await supabase
+    .from('squads')
+    .select('*')
+    .eq('id', squadId)
+    .single();
+
+  if (squadError) {
+    if (squadError.code === 'PGRST116') return null;
+    throw squadError;
+  }
+
+  const { data: members, error: membersError } = await supabase
+    .from('squad_members')
+    .select(`
+      *,
+      user:users(*)
+    `)
+    .eq('squad_id', squadId)
+    .order('role', { ascending: true })
+    .order('joined_at', { ascending: true });
+
+  if (membersError) throw membersError;
+
+  return {
+    ...squad,
+    members: members || [],
+    member_count: members?.length || 0
+  };
+}
+
+/**
+ * Get squad members
+ */
+export async function getSquadMembers(squadId: string): Promise<SquadMember[]> {
+  const { data, error } = await supabase
+    .from('squad_members')
+    .select(`
+      *,
+      user:users(*)
+    `)
+    .eq('squad_id', squadId)
+    .order('role', { ascending: true })
+    .order('joined_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Join a squad
+ */
+export async function joinSquad(squadId: string, userId: string, role: 'member' | 'lead' | 'co-lead' = 'member'): Promise<SquadMember | null> {
+  const { data, error } = await supabase
+    .from('squad_members')
+    .insert({
+      squad_id: squadId,
+      user_id: userId,
+      role
+    })
+    .select()
+    .single();
+
+  if (error) {
+    // If already a member, ignore the error
+    if (error.code === '23505') return null;
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * Leave a squad
+ */
+export async function leaveSquad(squadId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('squad_members')
+    .delete()
+    .eq('squad_id', squadId)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+}
+
+/**
+ * Check if user is a member of a squad
+ */
+export async function isSquadMember(squadId: string, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('squad_members')
+    .select('id')
+    .eq('squad_id', squadId)
+    .eq('user_id', userId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+  return !!data;
+}
+
+/**
+ * Get all squads a user is a member of
+ */
+export async function getUserSquads(userId: string): Promise<Squad[]> {
+  const { data, error } = await supabase
+    .from('squad_members')
+    .select(`
+      squad:squads(*)
+    `)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+  return data?.map(item => item.squad as Squad).filter(Boolean) || [];
+}
+
+/**
+ * Get squads by region/city
+ */
+export async function getSquadsByCity(city: string): Promise<Squad[]> {
+  const { data, error } = await supabase
+    .from('squads')
+    .select('*')
+    .ilike('city', `%${city}%`)
+    .eq('is_active', true);
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Get squads by country
+ */
+export async function getSquadsByCountry(country: string = 'India'): Promise<Squad[]> {
+  const { data, error } = await supabase
+    .from('squads')
+    .select('*')
+    .eq('country', country)
+    .eq('is_active', true)
+    .order('city', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
 }
 
 // =====================================================

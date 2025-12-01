@@ -76,3 +76,37 @@ export interface MeetupAttendee {
   joined_at?: string;
 }
 
+// Squad (Community/Chapter) types
+export interface Squad {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  cover_image?: string;
+  latitude: number;
+  longitude: number;
+  city: string;
+  region?: string;
+  country?: string;
+  telegram_link?: string;
+  twitter_handle?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SquadMember {
+  id?: string;
+  squad_id: string;
+  user_id: string;
+  role?: 'member' | 'lead' | 'co-lead';
+  joined_at?: string;
+  // Joined user data
+  user?: User;
+}
+
+export interface SquadWithMembers extends Squad {
+  members?: SquadMember[];
+  member_count?: number;
+}
+
