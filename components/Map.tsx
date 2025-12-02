@@ -18,9 +18,6 @@ import {
   getUserAvatar,
   getUserDisplayName,
   getSquadsWithMemberCount,
-  joinSquad,
-  leaveSquad,
-  isSquadMember,
 } from "@/lib/supabase-helpers";
 import type { User, SquadWithMembers } from "@/lib/supabase";
 import { createSquadMarkerIcon } from "./SquadMarker";

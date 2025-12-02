@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import type { SquadWithMembers, SquadMember } from "@/lib/supabase";
 import {
   getSquadWithMembers,
@@ -30,13 +31,7 @@ const SquadModal = ({
   const [joining, setJoining] = useState(false);
   const [isMember, setIsMember] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && squadId) {
-      loadSquad();
-    }
-  }, [isOpen, squadId]);
-
-  const loadSquad = async () => {
+  const loadSquad = useCallback(async () => {
     if (!squadId) return;
     
     setLoading(true);
@@ -44,7 +39,6 @@ const SquadModal = ({
       const data = await getSquadWithMembers(squadId);
       setSquad(data);
       
-      // Check if current user is a member
       if (currentUserId && data?.members) {
         const memberIds = data.members.map(m => m.user_id);
         setIsMember(memberIds.includes(currentUserId));
@@ -54,7 +48,13 @@ const SquadModal = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [squadId, currentUserId]);
+
+  useEffect(() => {
+    if (isOpen && squadId) {
+      loadSquad();
+    }
+  }, [isOpen, squadId, loadSquad]);
 
   const handleJoinLeave = async () => {
     if (!squadId || !currentUserId) return;
@@ -69,7 +69,6 @@ const SquadModal = ({
         setIsMember(true);
       }
       
-      // Reload squad data to update member list
       await loadSquad();
       onMembershipChange?.();
     } catch (error) {
@@ -102,30 +101,21 @@ const SquadModal = ({
           </div>
         ) : squad ? (
           <>
-            {/* Header */}
             <div className="modal-header">
               <div className="squad-modal-title">
-                    {/* <div className="squad-modal-icon">
-                    <svg width="40" height="40" viewBox="0 0 249 249" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M0 19.671C0 12.9332 0 9.56425 1.26956 6.97276C2.48511 4.49151 4.49151 2.48511 6.97276 1.26956C9.56425 0 12.9332 0 19.671 0H229.329C236.067 0 239.436 0 242.027 1.26956C244.508 2.48511 246.515 4.49151 247.73 6.97276C249 9.56425 249 12.9332 249 19.671V229.329C249 236.067 249 239.436 247.73 242.027C246.515 244.508 244.508 246.515 242.027 247.73C239.436 249 236.067 249 229.329 249H19.671C12.9332 249 9.56425 249 6.97276 247.73C4.49151 246.515 2.48511 244.508 1.26956 242.027C0 239.436 0 236.067 0 229.329V19.671Z" fill="#0000FF"/>
-                    </svg>
-                    </div> */}
                 <h3>{squad.name}</h3>
               </div>
               <button className="modal-close" onClick={onClose}>×</button>
             </div>
 
-            {/* Location */}
             <div className="squad-modal-location">
               {squad.city}{squad.region ? `, ${squad.region}` : ''}, {squad.country || 'India'}
             </div>
 
-            {/* Description */}
             {squad.description && (
               <p className="squad-modal-description">{squad.description}</p>
             )}
 
-            {/* Stats */}
             <div className="squad-modal-stats">
               <div className="squad-modal-stat">
                 <span className="stat-number">{squad.member_count || 0}</span>
@@ -133,17 +123,19 @@ const SquadModal = ({
               </div>
             </div>
 
-            {/* Members List */}
             <div className="squad-modal-section">
               <h4>Members</h4>
               {squad.members && squad.members.length > 0 ? (
                 <div className="squad-members-list">
                   {squad.members.map((member) => (
                     <div key={member.id} className="squad-member-item">
-                      <img
+                      <Image
                         src={member.user ? getUserAvatar(member.user) : '/icon.png'}
                         alt={member.user ? getUserDisplayName(member.user) : 'Member'}
+                        width={44}
+                        height={44}
                         className="squad-member-avatar-large"
+                        unoptimized
                       />
                       <div className="squad-member-info">
                         <span className="squad-member-name">
@@ -163,7 +155,6 @@ const SquadModal = ({
               )}
             </div>
 
-            {/* Actions */}
             <div className="squad-modal-actions">
               {currentUserId ? (
                 <button
@@ -184,7 +175,6 @@ const SquadModal = ({
               )}
             </div>
 
-            {/* Social Links */}
             {(squad.telegram_link || squad.twitter_handle) && (
               <div className="squad-modal-links">
                 {squad.telegram_link && (
@@ -228,4 +218,3 @@ const SquadModal = ({
 };
 
 export default SquadModal;
-
