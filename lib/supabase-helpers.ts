@@ -564,7 +564,15 @@ export async function getUserSquads(userId: string): Promise<Squad[]> {
     .eq('user_id', userId);
 
   if (error) throw error;
-  return data?.map(item => item.squad as Squad).filter(Boolean) || [];
+  if (!data) return [];
+  
+  const squads: Squad[] = [];
+  for (const item of data) {
+    if (item.squad && typeof item.squad === 'object' && !Array.isArray(item.squad)) {
+      squads.push(item.squad as Squad);
+    }
+  }
+  return squads;
 }
 
 /**
