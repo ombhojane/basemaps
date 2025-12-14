@@ -26,6 +26,7 @@ const RegionSelector = ({ onRegionSelect }: RegionSelectorProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Region[]>([]);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -95,6 +96,31 @@ const RegionSelector = ({ onRegionSelect }: RegionSelectorProps) => {
     setSearchResults([]);
   };
 
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsDetectingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        onRegionSelect(latitude, longitude, "Your Location");
+        setIsOpen(false);
+        setSearchQuery("");
+        setSearchResults([]);
+        setIsDetectingLocation(false);
+      },
+      (error) => {
+        console.error("Error detecting location:", error);
+        alert("Unable to detect your location. Please enable location services.");
+        setIsDetectingLocation(false);
+      }
+    );
+  };
+
   const filteredPresets = PRESET_REGIONS.filter((region) =>
     region.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -153,6 +179,36 @@ const RegionSelector = ({ onRegionSelect }: RegionSelectorProps) => {
               <div className="search-spinner-mini"></div>
             )}
           </div>
+
+          {/* Detect Location Button */}
+          {!searchQuery && (
+            <div className="detect-location-wrapper">
+              <button
+                className="detect-location-btn"
+                onClick={handleDetectLocation}
+                disabled={isDetectingLocation}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <circle cx="12" cy="12" r="4"></circle>
+                  <line x1="12" y1="2" x2="12" y2="4"></line>
+                  <line x1="12" y1="20" x2="12" y2="22"></line>
+                  <line x1="2" y1="12" x2="4" y2="12"></line>
+                  <line x1="20" y1="12" x2="22" y2="12"></line>
+                </svg>
+                <span>{isDetectingLocation ? "Detecting..." : "Detect my location"}</span>
+              </button>
+            </div>
+          )}
 
           {/* Preset Regions - Grid Layout */}
           {showPresets && !searchQuery && (

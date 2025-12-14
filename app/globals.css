@@ -196,6 +196,42 @@
     animation: spin 0.6s linear infinite;
   }
 
+  .detect-location-wrapper {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--base-gray-200);
+  }
+
+  .detect-location-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    background: var(--base-white);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--base-blue);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: "Inter", sans-serif;
+  }
+
+  .detect-location-btn:hover {
+    background: rgba(0, 82, 255, 0.05);
+  }
+
+  .detect-location-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .detect-location-btn svg {
+    color: var(--base-blue);
+    flex-shrink: 0;
+  }
+
   .region-section {
     padding: 12px;
     max-height: 300px;
