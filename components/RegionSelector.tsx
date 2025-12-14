@@ -1,18 +1,20 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 
 interface Region {
   name: string;
   lat: number;
   lng: number;
+  icon?: string;
 }
 
 const PRESET_REGIONS: Region[] = [
-  { name: "Mumbai", lat: 19.0760, lng: 72.8777 },
-  { name: "Bangalore", lat: 12.9716, lng: 77.5946 },
-  { name: "New Delhi", lat: 28.6139, lng: 77.2090 },
-  { name: "Pune", lat: 18.5204, lng: 73.8567 },
+  { name: "Mumbai", lat: 19.0760, lng: 72.8777, icon: "/cities/mumbai.jpg" },
+  { name: "Bangalore", lat: 12.9716, lng: 77.5946, icon: "/cities/bangalore.jpg" },
+  { name: "Hyderabad", lat: 17.3850, lng: 78.4867, icon: "/cities/hyd.jpg" },
+  { name: "Pune", lat: 18.5204, lng: 73.8567, icon: "/cities/pune.jpg" },
 ];
 
 interface RegionSelectorProps {
@@ -152,32 +154,29 @@ const RegionSelector = ({ onRegionSelect }: RegionSelectorProps) => {
             )}
           </div>
 
-          {/* Preset Regions */}
+          {/* Preset Regions - Grid Layout */}
           {showPresets && !searchQuery && (
             <div className="region-section">
-              <div className="region-section-title">Quick Access</div>
-              {PRESET_REGIONS.map((region) => (
-                <button
-                  key={region.name}
-                  className="region-item"
-                  onClick={() => handleRegionClick(region)}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+              <div className="region-grid">
+                {PRESET_REGIONS.map((region) => (
+                  <button
+                    key={region.name}
+                    className="region-grid-item"
+                    onClick={() => handleRegionClick(region)}
                   >
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                  </svg>
-                  <span>{region.name}</span>
-                </button>
-              ))}
+                    <div className="region-icon-wrapper">
+                      <Image
+                        src={region.icon || "/icon.png"}
+                        alt={region.name}
+                        width={80}
+                        height={80}
+                        className="region-icon-img"
+                      />
+                    </div>
+                    <span className="region-name">{region.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
