@@ -88,3 +88,5 @@ CREATE TRIGGER update_squads_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_squad_updated_at();
 
+
+

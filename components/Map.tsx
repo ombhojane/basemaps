@@ -24,8 +24,7 @@ import { createSquadMarkerIcon } from "./SquadMarker";
 import SquadModal from "./SquadModal";
 
 // Zoom thresholds for layer visibility
-const ZOOM_THRESHOLD_MARKERS = 13;  // Show user markers at this zoom and above
-const ZOOM_THRESHOLD_SQUADS = 10;   // Show squad markers at this zoom and above
+const ZOOM_THRESHOLD_MARKERS = 11;  // Show user markers at this zoom and above
 
 // Blue-white gradient for heatmap (Base brand colors)
 const HEATMAP_GRADIENT: { [key: number]: string } = {
@@ -78,11 +77,38 @@ const Map = () => {
     squadId: null as string | null,
   });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [showUtilities, setShowUtilities] = useState(false);
+  const [heatmapEnabled, setHeatmapEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('basemaps_heatmap_enabled');
+      return saved === 'true';
+    }
+    return false;
+  });
 
   // Keep addressRef in sync with address
   useEffect(() => {
     addressRef.current = address;
   }, [address]);
+
+  /**
+   * Handle heatmap toggle - trigger visibility update
+   * Persists state to localStorage
+   */
+  useEffect(() => {
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('basemaps_heatmap_enabled', String(heatmapEnabled));
+    }
+
+    // Trigger map layer update if map is initialized
+    if (mapInstanceRef.current) {
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        mapInstanceRef.current?.fire('zoomend');
+      }, 50);
+    }
+  }, [heatmapEnabled]);
 
   /**
    * Handle region selection from RegionSelector
@@ -293,15 +319,16 @@ const Map = () => {
 
       /**
        * Creates squad markers and adds them to the squad layer
+       * Dynamically scales markers based on zoom level
        */
-      const createSquadMarkers = (squads: SquadWithMembers[]) => {
+      const createSquadMarkers = (squads: SquadWithMembers[], zoom: number) => {
         // Clear existing squad markers
         squadLayer.clearLayers();
 
         squads.forEach((squad) => {
           if (!squad.latitude || !squad.longitude) return;
 
-          const squadIcon = createSquadMarkerIcon(squad);
+          const squadIcon = createSquadMarkerIcon(squad, zoom);
           const marker = L.marker([squad.latitude, squad.longitude], { icon: squadIcon });
 
           // Add click handler to open squad modal
@@ -316,7 +343,7 @@ const Map = () => {
           squadLayer.addLayer(marker);
         });
 
-        console.log(`Created ${squads.length} squad markers`);
+        console.log(`Created ${squads.length} squad markers at zoom ${zoom}`);
       };
 
       /**
@@ -330,8 +357,9 @@ const Map = () => {
           // Store squads data
           squadsDataRef.current = squads;
 
-          // Create squad markers
-          createSquadMarkers(squads);
+          // Create squad markers with current zoom
+          const currentZoom = map.getZoom();
+          createSquadMarkers(squads, currentZoom);
         } catch (error) {
           console.error("Error loading squads on map:", error);
         }
@@ -505,87 +533,93 @@ const Map = () => {
       };
 
       /**
-       * Updates layer visibility based on current zoom level
-       * Uses CSS transitions for smooth layer switching
-       * - Zoom < 10: Only heatmap
-       * - Zoom 10-13: Heatmap + Squad markers
-       * - Zoom >= 13: Squad markers + User markers (no heatmap)
+       * Updates layer visibility based on current zoom level and heatmap toggle
+       * - Squad markers: Always visible with dynamic sizing
+       * - When heatmap is ON:
+       *   - Zoom < 11: Show heatmap, hide user markers
+       *   - Zoom >= 11: Show user markers, hide heatmap
+       * - When heatmap is OFF: Always show user markers
        */
       const updateLayerVisibility = () => {
         const currentZoom = map.getZoom();
-        const showSquads = currentZoom >= ZOOM_THRESHOLD_SQUADS;
+        const container = mapRef.current;
         const showMarkers = currentZoom >= ZOOM_THRESHOLD_MARKERS;
 
-        // Get canvas element for heatmap opacity transitions
-        const heatmapCanvas = mapRef.current?.querySelector('canvas') as HTMLCanvasElement;
-        const container = mapRef.current;
-
-        // Handle squad layer visibility (show at zoom >= 10)
-        if (showSquads) {
-          if (squadLayerRef.current && !map.hasLayer(squadLayerRef.current)) {
-            squadLayerRef.current.addTo(map);
-          }
-        } else {
-          if (squadLayerRef.current && map.hasLayer(squadLayerRef.current)) {
-            squadLayerRef.current.remove();
-          }
+        // Squad markers are always visible - just update their size based on zoom
+        if (squadLayerRef.current && !map.hasLayer(squadLayerRef.current)) {
+          squadLayerRef.current.addTo(map);
+        }
+        
+        // Refresh squad markers with new zoom level for dynamic scaling
+        if (squadsDataRef.current.length > 0) {
+          createSquadMarkers(squadsDataRef.current, currentZoom);
         }
 
-        // Handle user markers and heatmap (same as before)
-        if (showMarkers) {
-          // Transition to markers view
-          // First ensure markers layer is added
+        if (heatmapEnabled) {
+          // Heatmap mode: toggle between heatmap and markers based on zoom
+          if (showMarkers) {
+            // Zoomed in: show markers, hide heatmap
+            if (!map.hasLayer(markerLayer)) {
+              markerLayer.addTo(map);
+            }
+            if (container) {
+              container.classList.remove('markers-hidden');
+              container.classList.add('markers-visible');
+            }
+
+            // Fade out and remove heatmap
+            if (heatLayerRef.current && map.hasLayer(heatLayerRef.current)) {
+              const heatmapCanvas = mapRef.current?.querySelector('canvas') as HTMLCanvasElement;
+              if (heatmapCanvas) {
+                heatmapCanvas.style.transition = 'opacity 0.3s ease-out';
+                heatmapCanvas.style.opacity = '0';
+              }
+              setTimeout(() => {
+                if (heatLayerRef.current && map.hasLayer(heatLayerRef.current)) {
+                  heatLayerRef.current.remove();
+                }
+              }, 300);
+            }
+          } else {
+            // Zoomed out: show heatmap, hide markers
+            if (heatLayerRef.current && !map.hasLayer(heatLayerRef.current)) {
+              heatLayerRef.current.addTo(map);
+              // Fade in effect
+              const heatmapCanvas = mapRef.current?.querySelector('canvas') as HTMLCanvasElement;
+              if (heatmapCanvas) {
+                heatmapCanvas.style.opacity = '0';
+                heatmapCanvas.style.transition = 'opacity 0.3s ease-out';
+                requestAnimationFrame(() => {
+                  heatmapCanvas.style.opacity = '1';
+                });
+              }
+            }
+
+            // Hide markers
+            if (container) {
+              container.classList.add('markers-hidden');
+              container.classList.remove('markers-visible');
+            }
+            setTimeout(() => {
+              if (map.hasLayer(markerLayer)) {
+                markerLayer.remove();
+              }
+            }, 300);
+          }
+        } else {
+          // Heatmap disabled: always show markers
           if (!map.hasLayer(markerLayer)) {
             markerLayer.addTo(map);
           }
-          
-          // Add CSS classes for smooth transition
           if (container) {
             container.classList.remove('markers-hidden');
             container.classList.add('markers-visible');
           }
 
-          // Fade out heatmap with delay then remove
-          if (heatmapCanvas) {
-            heatmapCanvas.style.transition = 'opacity 0.3s ease-out';
-            heatmapCanvas.style.opacity = '0';
+          // Remove heatmap if present
+          if (heatLayerRef.current && map.hasLayer(heatLayerRef.current)) {
+            heatLayerRef.current.remove();
           }
-          
-          // Remove heatmap layer after transition
-          setTimeout(() => {
-            if (heatLayerRef.current && map.hasLayer(heatLayerRef.current)) {
-              heatLayerRef.current.remove();
-            }
-          }, 300);
-        } else {
-          // Transition to heatmap view
-          // First ensure heatmap layer is added
-          if (heatLayerRef.current && !map.hasLayer(heatLayerRef.current)) {
-            heatLayerRef.current.addTo(map);
-            // Start with opacity 0 for fade-in effect
-            const newCanvas = mapRef.current?.querySelector('canvas') as HTMLCanvasElement;
-            if (newCanvas) {
-              newCanvas.style.opacity = '0';
-              newCanvas.style.transition = 'opacity 0.3s ease-out';
-              // Trigger reflow and fade in
-              requestAnimationFrame(() => {
-                newCanvas.style.opacity = '1';
-              });
-            }
-          }
-
-          // Add CSS classes to hide markers smoothly
-          if (container) {
-            container.classList.add('markers-hidden');
-            container.classList.remove('markers-visible');
-          }
-
-          // Remove marker layer after transition
-          setTimeout(() => {
-            if (map.hasLayer(markerLayer)) {
-              markerLayer.remove();
-            }
-          }, 300);
         }
       };
 
@@ -611,7 +645,7 @@ const Map = () => {
           // Create markers
           createMarkers(dbUsers, currentUserAddress);
 
-          // Set initial visibility based on current zoom
+          // Set initial visibility based on current zoom and heatmap state
           updateLayerVisibility();
         } catch (error) {
           console.error("Error loading users on map:", error);
@@ -788,12 +822,13 @@ const Map = () => {
           if (squadsDataRef.current.length > 0 && mapInstanceRef.current) {
             getSquadsWithMemberCount().then(squads => {
               squadsDataRef.current = squads;
-              // Re-create squad markers with updated counts
-              if (squadLayerRef.current) {
+              // Re-create squad markers with updated counts and current zoom
+              if (squadLayerRef.current && mapInstanceRef.current) {
+                const currentZoom = mapInstanceRef.current.getZoom();
                 squadLayerRef.current.clearLayers();
                 squads.forEach((squad) => {
                   if (!squad.latitude || !squad.longitude) return;
-                  const squadIcon = createSquadMarkerIcon(squad);
+                  const squadIcon = createSquadMarkerIcon(squad, currentZoom);
                   const marker = L.marker([squad.latitude, squad.longitude], { icon: squadIcon });
                   marker.on('click', () => {
                     setSquadModal({ isOpen: true, squadId: squad.id });
@@ -805,6 +840,63 @@ const Map = () => {
           }
         }}
       />
+
+      {/* Utilities Button */}
+      <div className="utilities-container">
+        <button
+          className="utilities-btn"
+          onClick={() => setShowUtilities(!showUtilities)}
+          aria-label="Utilities"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 1v6m0 6v6m8.66-13l-3 5.196M9.34 15.804L6.34 21M23 12h-6m-6 0H1m17.66 8.66l-3-5.196M9.34 8.196l-3-5.196"></path>
+          </svg>
+        </button>
+
+        {/* Utilities Menu Card */}
+        {showUtilities && (
+          <div className="utilities-menu">
+            <div className="utilities-header">
+              <h3>Utilities</h3>
+              <button
+                className="utilities-close"
+                onClick={() => setShowUtilities(false)}
+                aria-label="Close"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div className="utilities-content">
+              <div className="utility-item">
+                <div className="utility-info">
+                  <span className="utility-label">Heatmap</span>
+                  <span className="utility-description">Show density visualization</span>
+                </div>
+                <button
+                  className={`toggle-switch ${heatmapEnabled ? 'active' : ''}`}
+                  onClick={() => setHeatmapEnabled(!heatmapEnabled)}
+                  aria-label="Toggle heatmap"
+                >
+                  <span className="toggle-slider"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 };

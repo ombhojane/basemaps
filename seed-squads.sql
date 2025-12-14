@@ -62,3 +62,5 @@ INSERT INTO squads (name, description, icon, latitude, longitude, city, region, 
 -- Verify insertion
 SELECT name, city, region FROM squads ORDER BY region, city;
 
+
+

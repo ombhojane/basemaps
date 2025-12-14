@@ -4,29 +4,50 @@ import L from "leaflet";
 import type { SquadWithMembers } from "@/lib/supabase";
 
 /**
- * Creates a custom squad marker icon with Base brand styling
+ * Calculate dynamic size based on zoom level
+ * Zoom 2-5: Small (20px)
+ * Zoom 6-9: Medium (32px) 
+ * Zoom 10+: Large (48px)
  */
-export function createSquadMarkerIcon(squad: SquadWithMembers): L.DivIcon {
+function getIconSize(zoom: number): { size: number; showLabel: boolean } {
+  if (zoom >= 10) {
+    return { size: 48, showLabel: true };
+  } else if (zoom >= 6) {
+    return { size: 32, showLabel: false };
+  } else {
+    return { size: 20, showLabel: false };
+  }
+}
+
+/**
+ * Creates a custom squad marker icon with Base brand styling
+ * Dynamically scales based on zoom level for visibility at all ranges
+ */
+export function createSquadMarkerIcon(squad: SquadWithMembers, zoom: number): L.DivIcon {
+  const { size, showLabel } = getIconSize(zoom);
+  
   const iconHtml = `
     <div class="squad-marker-container">
       <div class="squad-marker">
         <div class="squad-icon-wrapper">
-          <svg width="48" height="48" viewBox="0 0 249 249" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="${size}" height="${size}" viewBox="0 0 249 249" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0 19.671C0 12.9332 0 9.56425 1.26956 6.97276C2.48511 4.49151 4.49151 2.48511 6.97276 1.26956C9.56425 0 12.9332 0 19.671 0H229.329C236.067 0 239.436 0 242.027 1.26956C244.508 2.48511 246.515 4.49151 247.73 6.97276C249 9.56425 249 12.9332 249 19.671V229.329C249 236.067 249 239.436 247.73 242.027C246.515 244.508 244.508 246.515 242.027 247.73C239.436 249 236.067 249 229.329 249H19.671C12.9332 249 9.56425 249 6.97276 247.73C4.49151 246.515 2.48511 244.508 1.26956 242.027C0 239.436 0 236.067 0 229.329V19.671Z" fill="#0000FF"/>
           </svg>
         </div>
-        <div class="squad-name-label">
+        ${showLabel ? `<div class="squad-name-label">
           ${squad.name}
-        </div>
+        </div>` : ''}
       </div>
     </div>
   `;
 
+  const totalHeight = showLabel ? size + 30 : size + 10;
+  
   return L.divIcon({
     html: iconHtml,
     className: "squad-marker-icon",
-    iconSize: [60, 80],
-    iconAnchor: [30, 70],
-    popupAnchor: [0, -60],
+    iconSize: [size + 12, totalHeight],
+    iconAnchor: [size / 2 + 6, totalHeight - 10],
+    popupAnchor: [0, -(totalHeight - 10)],
   });
 }

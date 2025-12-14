@@ -676,6 +676,172 @@
     margin-right: 16px !important;
   }
 
+  /* Utilities Button and Menu */
+  .utilities-container {
+    position: fixed;
+    bottom: 90px;
+    right: 16px;
+    z-index: 1001;
+  }
+
+  .utilities-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--base-white);
+    border: 2px solid var(--base-blue);
+    color: var(--base-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 82, 255, 0.2);
+  }
+
+  .utilities-btn:hover {
+    background: var(--base-blue);
+    color: var(--base-white);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 82, 255, 0.35);
+  }
+
+  .utilities-btn:active {
+    transform: translateY(0);
+  }
+
+  .utilities-menu {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    right: 0;
+    min-width: 280px;
+    background: var(--base-white);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--base-gray-200);
+    overflow: hidden;
+    animation: slideUp 0.2s ease;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .utilities-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--base-gray-200);
+  }
+
+  .utilities-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--base-blue);
+    margin: 0;
+  }
+
+  .utilities-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    color: var(--base-gray-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .utilities-close:hover {
+    background: var(--base-gray-100);
+    color: var(--base-blue);
+  }
+
+  .utilities-content {
+    padding: 12px;
+  }
+
+  .utility-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-radius: 12px;
+    transition: background 0.2s ease;
+  }
+
+  .utility-item:hover {
+    background: rgba(0, 82, 255, 0.05);
+  }
+
+  .utility-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .utility-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--base-black);
+  }
+
+  .utility-description {
+    font-size: 12px;
+    color: var(--base-gray-600);
+  }
+
+  /* Toggle Switch */
+  .toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 28px;
+    background: var(--base-gray-300);
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+
+  .toggle-switch:hover {
+    background: var(--base-gray-400);
+  }
+
+  .toggle-switch.active {
+    background: var(--base-blue);
+  }
+
+  .toggle-switch.active:hover {
+    background: #0046dd;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    background: var(--base-white);
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .toggle-switch.active .toggle-slider {
+    transform: translateX(20px);
+  }
+
   .leaflet-bar {
     border: none;
   }
@@ -2942,12 +3108,14 @@
   .squad-marker-icon {
     background: transparent !important;
     border: none !important;
+    transition: all 0.3s ease;
   }
 
   .squad-marker-container {
     display: flex;
     flex-direction: column;
     align-items: center;
+    transition: all 0.3s ease;
   }
 
   .squad-marker {
@@ -2959,16 +3127,18 @@
   }
 
   .squad-marker:hover {
-    transform: scale(1.1);
+    transform: scale(1.15);
   }
 
   .squad-icon-wrapper {
     position: relative;
     filter: drop-shadow(0 4px 12px rgba(0, 82, 255, 0.4));
+    transition: all 0.3s ease;
   }
 
   .squad-icon-wrapper svg {
     display: block;
+    transition: all 0.3s ease;
   }
 
   .squad-member-badge {
