@@ -109,4 +109,3 @@ export interface SquadWithMembers extends Squad {
   members?: SquadMember[];
   member_count?: number;
 }
-

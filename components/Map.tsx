@@ -60,6 +60,7 @@ const Map = () => {
   const squadsDataRef = useRef<SquadWithMembers[]>([]);
   const addressRef = useRef(address);
   const currentUserIdRef = useRef<string | null>(null);
+  const heatmapEnabledRef = useRef(false);
   
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
@@ -96,6 +97,9 @@ const Map = () => {
    * Persists state to localStorage
    */
   useEffect(() => {
+    // Keep ref in sync with state
+    heatmapEnabledRef.current = heatmapEnabled;
+
     // Save to localStorage
     if (typeof window !== 'undefined') {
       localStorage.setItem('basemaps_heatmap_enabled', String(heatmapEnabled));
@@ -555,7 +559,7 @@ const Map = () => {
           createSquadMarkers(squadsDataRef.current, currentZoom);
         }
 
-        if (heatmapEnabled) {
+        if (heatmapEnabledRef.current) {
           // Heatmap mode: toggle between heatmap and markers based on zoom
           if (showMarkers) {
             // Zoomed in: show markers, hide heatmap
