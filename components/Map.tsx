@@ -531,17 +531,33 @@ const Map = () => {
       };
 
       /**
-       * Swaps which pre-built markers are shown based on zoom sampling.
-       * No DOM creation/destruction — just adds/removes from layer group.
+       * Swaps which pre-built markers are shown based on zoom + viewport density.
+       * Sparse areas (≤8 users in viewport): show all pins immediately.
+       * Dense areas: apply grid sampling + hard cap.
        */
+      const SPARSE_THRESHOLD = 8;
+
       const refreshVisibleMarkers = (zoom: number) => {
         markerLayer.clearLayers();
 
-        const sampled = sampleUsersByZoom(usersDataRef.current, zoom);
-        const sampledWallets = new Set(sampled.map(u => u.wallet_address));
+        // Check how many users are in the current viewport
+        const bounds = map.getBounds();
+        const viewportUsers = usersDataRef.current.filter(u =>
+          u.latitude && u.longitude && bounds.contains([u.latitude!, u.longitude!])
+        );
 
+        let visibleUsers: User[];
+        if (viewportUsers.length <= SPARSE_THRESHOLD && zoom >= 10) {
+          // Sparse area (like Thane): show all users in viewport
+          visibleUsers = viewportUsers;
+        } else {
+          // Dense area (like Mumbai): apply grid sampling + cap
+          visibleUsers = sampleUsersByZoom(viewportUsers, zoom);
+        }
+
+        const visibleWallets = new Set(visibleUsers.map(u => u.wallet_address));
         for (const wallet of Object.keys(allMarkersRef.current)) {
-          if (sampledWallets.has(wallet)) {
+          if (visibleWallets.has(wallet)) {
             markerLayer.addLayer(allMarkersRef.current[wallet]);
           }
         }
@@ -552,9 +568,9 @@ const Map = () => {
       };
 
       /**
-       * Updates layers on zoom:
+       * Updates layers on zoom/pan:
        * - Heatmap: always visible, opacity fades as you zoom in
-       * - Markers: grid-sampled — few at city level, all at street level
+       * - Markers: viewport-aware density sampling
        * - Squads: always visible with dynamic sizing
        */
       const updateLayerVisibility = () => {
@@ -586,14 +602,15 @@ const Map = () => {
           }
         }
 
-        // Markers: swap sampled subset
+        // Markers: viewport-aware sampling
         if (usersDataRef.current.length > 0) {
           refreshVisibleMarkers(currentZoom);
         }
       };
 
-      // Update on zoom changes only
+      // Update on zoom and pan (viewport matters for density check)
       map.on('zoomend', updateLayerVisibility);
+      map.on('moveend', updateLayerVisibility);
 
       // Function to load and display users from database
       const loadUsersOnMap = async (currentUserAddress?: string) => {
