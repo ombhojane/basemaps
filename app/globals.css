@@ -755,6 +755,69 @@
     transition: opacity 0.3s ease-out;
   }
 
+  /* Marker Cluster Styles - Base Blue Theme */
+  .custom-cluster-icon {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  .cluster-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--base-blue);
+    color: var(--base-white);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(0, 82, 255, 0.4);
+    border: 3px solid var(--base-white);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+  }
+
+  .cluster-icon:hover {
+    transform: scale(1.12);
+    box-shadow: 0 6px 20px rgba(0, 82, 255, 0.55);
+  }
+
+  .cluster-small {
+    width: 40px;
+    height: 40px;
+    font-size: 13px;
+  }
+
+  .cluster-medium {
+    width: 48px;
+    height: 48px;
+    font-size: 14px;
+  }
+
+  .cluster-large {
+    width: 56px;
+    height: 56px;
+    font-size: 15px;
+  }
+
+  /* Hide default markercluster styles we don't need */
+  .marker-cluster-small,
+  .marker-cluster-medium,
+  .marker-cluster-large {
+    background: transparent !important;
+  }
+
+  .marker-cluster-small div,
+  .marker-cluster-medium div,
+  .marker-cluster-large div {
+    background: transparent !important;
+  }
+
+  /* Spiderfy lines */
+  .leaflet-cluster-anim .leaflet-marker-icon,
+  .leaflet-cluster-anim .leaflet-marker-shadow {
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  }
+
   /* Clean zoom controls - Base blue accents */
   .leaflet-control-zoom {
     border: none !important;

@@ -23,8 +23,11 @@ import type { User, SquadWithMembers } from "@/lib/supabase";
 import { createSquadMarkerIcon } from "./SquadMarker";
 import SquadModal from "./SquadModal";
 
-// Zoom thresholds for layer visibility
-const ZOOM_THRESHOLD_MARKERS = 11;  // Show user markers at this zoom and above
+// Zoom thresholds for progressive pin reveal
+const ZOOM_PINS_START = 12;    // No pins below this zoom
+const ZOOM_PINS_ALL = 19;      // Show all pins only at street level
+const ZOOM_HEATMAP_FADE = 13;  // Heatmap starts fading at this zoom
+const ZOOM_HEATMAP_GONE = 18;  // Heatmap fully transparent at this zoom
 
 // Blue-white gradient for heatmap (Base brand colors)
 const HEATMAP_GRADIENT: { [key: number]: string } = {
@@ -55,12 +58,13 @@ const Map = () => {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const heatLayerRef = useRef<L.HeatLayer | null>(null);
   const markerLayerRef = useRef<L.LayerGroup | null>(null);
+  const allMarkersRef = useRef<Record<string, L.Marker>>({});
   const squadLayerRef = useRef<L.LayerGroup | null>(null);
   const usersDataRef = useRef<User[]>([]);
   const squadsDataRef = useRef<SquadWithMembers[]>([]);
   const addressRef = useRef(address);
   const currentUserIdRef = useRef<string | null>(null);
-  const heatmapEnabledRef = useRef(false);
+  const heatmapEnabledRef = useRef(true);
   
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
@@ -68,6 +72,7 @@ const Map = () => {
     recipientImage: "",
     recipientAddress: "",
   });
+
   const [onboardingModal, setOnboardingModal] = useState({
     isOpen: false,
     hasBasename: true,
@@ -79,13 +84,7 @@ const Map = () => {
   });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showUtilities, setShowUtilities] = useState(false);
-  const [heatmapEnabled, setHeatmapEnabled] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('basemaps_heatmap_enabled');
-      return saved === 'true';
-    }
-    return false;
-  });
+  const [heatmapEnabled, setHeatmapEnabled] = useState(true);
 
   // Keep addressRef in sync with address
   useEffect(() => {
@@ -388,55 +387,54 @@ const Map = () => {
       };
 
       /**
-       * Creates markers and adds them to the marker layer group
+       * Grid-based spatial sampling: picks 1 user per grid cell.
+       * Lower zoom → bigger cells → fewer pins. Higher zoom → more pins.
        */
-      const createMarkers = (users: User[], currentUserAddress?: string) => {
-        // Clear existing markers
-        markerLayer.clearLayers();
+      const sampleUsersByZoom = (users: User[], zoom: number): User[] => {
+        if (zoom >= ZOOM_PINS_ALL) return users;
+        if (zoom < ZOOM_PINS_START) return [];
 
-        // Track used positions to prevent overlap
-        const usedPositions: { lat: number; lng: number }[] = [];
-        const minDistance = 0.002; // Minimum distance between markers (~200 meters)
+        // Large cells so few pins per level:
+        // zoom 12: 0.2° (~20km) → 1-2 pins in Mumbai
+        // zoom 14: 0.05° (~5km) → 5-10 pins
+        // zoom 16: 0.0125° (~1km) → more pins
+        // zoom 18: 0.003° (~300m) → nearly all
+        const cellSize = 0.8 / Math.pow(2, zoom - 10);
+        const occupied: Record<string, User> = {};
+
+        for (const user of users) {
+          if (!user.latitude || !user.longitude) continue;
+          const cellKey = `${Math.floor(user.latitude / cellSize)}_${Math.floor(user.longitude / cellSize)}`;
+          if (!occupied[cellKey]) {
+            occupied[cellKey] = user;
+          }
+        }
+
+        const sampled = Object.values(occupied);
+
+        // Hard cap: zoom 12→3, 13→6, 14→12, 15→20, 16→35, 17→60, 18→100
+        const maxPins = Math.min(users.length, Math.floor(3 * Math.pow(1.8, zoom - ZOOM_PINS_START)));
+        return sampled.slice(0, maxPins);
+      };
+
+      /**
+       * Pre-builds ALL marker DOM elements once and stores them.
+       * Called only when user data first loads — never recreated.
+       */
+      const buildAllMarkers = (users: User[], currentUserAddress?: string) => {
+        allMarkersRef.current = {};
 
         users.forEach((user) => {
           if (!user.latitude || !user.longitude) return;
 
-          // Check if this is the current user
           const isCurrentUser = currentUserAddress ? user.wallet_address === currentUserAddress : false;
-
           const userName = isCurrentUser ? "You" : getUserDisplayName(user);
           const userAvatar = getUserAvatar(user);
           const userIcon = createAvatarMarker(userAvatar, userName, isCurrentUser);
-
           const xHandle = user.x_handle;
           const farcaster = user.farcaster_username;
 
-          // Check if position is too close to existing markers and adjust
-          let lat = user.latitude;
-          let lng = user.longitude;
-          let attempts = 0;
-          let isTooClose = true;
-
-          while (isTooClose && attempts < 20) {
-            isTooClose = false;
-            for (const pos of usedPositions) {
-              const distance = Math.sqrt(Math.pow(lat - pos.lat, 2) + Math.pow(lng - pos.lng, 2));
-              if (distance < minDistance) {
-                // Add offset in a circular pattern to spread markers evenly
-                const angle = (attempts * Math.PI * 2) / 8; // 8 positions around circle
-                lat = user.latitude + Math.cos(angle) * minDistance;
-                lng = user.longitude + Math.sin(angle) * minDistance;
-                isTooClose = true;
-                attempts++;
-                break;
-              }
-            }
-          }
-
-          // Store this position
-          usedPositions.push({ lat, lng });
-
-          const marker = L.marker([lat, lng], { icon: userIcon })
+          const marker = L.marker([user.latitude, user.longitude], { icon: userIcon })
             .bindPopup(
               `
               <div style="font-family: Inter, sans-serif; padding: 4px; min-width: 180px;">
@@ -494,15 +492,11 @@ const Map = () => {
                 </div>
               </div>
             `,
-              {
-                className: "custom-popup",
-              }
+              { className: "custom-popup" }
             );
 
-          // Add event listeners for Wave and Send $ buttons
           marker.on("popupopen", () => {
             setTimeout(() => {
-              // Handle Wave button
               const waveBtn = document.querySelector(
                 `.wave-btn[data-wallet="${user.wallet_address}"]`
               ) as HTMLElement;
@@ -513,7 +507,6 @@ const Map = () => {
                 };
               }
 
-              // Handle Send $ button
               const sendBtn = document.querySelector(
                 `.send-payment-btn[data-wallet="${user.wallet_address}"]`
               ) as HTMLElement;
@@ -531,103 +524,75 @@ const Map = () => {
             }, 0);
           });
 
-          // Add marker to the layer group
-          markerLayer.addLayer(marker);
+          allMarkersRef.current[user.wallet_address] = marker;
         });
+
+        console.log(`Pre-built ${Object.keys(allMarkersRef.current).length} markers`);
       };
 
       /**
-       * Updates layer visibility based on current zoom level and heatmap toggle
-       * - Squad markers: Always visible with dynamic sizing
-       * - When heatmap is ON:
-       *   - Zoom < 11: Show heatmap, hide user markers
-       *   - Zoom >= 11: Show user markers, hide heatmap
-       * - When heatmap is OFF: Always show user markers
+       * Swaps which pre-built markers are shown based on zoom sampling.
+       * No DOM creation/destruction — just adds/removes from layer group.
+       */
+      const refreshVisibleMarkers = (zoom: number) => {
+        markerLayer.clearLayers();
+
+        const sampled = sampleUsersByZoom(usersDataRef.current, zoom);
+        const sampledWallets = new Set(sampled.map(u => u.wallet_address));
+
+        for (const wallet of Object.keys(allMarkersRef.current)) {
+          if (sampledWallets.has(wallet)) {
+            markerLayer.addLayer(allMarkersRef.current[wallet]);
+          }
+        }
+
+        if (!map.hasLayer(markerLayer)) {
+          markerLayer.addTo(map);
+        }
+      };
+
+      /**
+       * Updates layers on zoom:
+       * - Heatmap: always visible, opacity fades as you zoom in
+       * - Markers: grid-sampled — few at city level, all at street level
+       * - Squads: always visible with dynamic sizing
        */
       const updateLayerVisibility = () => {
         const currentZoom = map.getZoom();
         const container = mapRef.current;
-        const showMarkers = currentZoom >= ZOOM_THRESHOLD_MARKERS;
 
-        // Squad markers are always visible - just update their size based on zoom
+        // Squad markers: always visible, rescale on zoom
         if (squadLayerRef.current && !map.hasLayer(squadLayerRef.current)) {
           squadLayerRef.current.addTo(map);
         }
-        
-        // Refresh squad markers with new zoom level for dynamic scaling
         if (squadsDataRef.current.length > 0) {
           createSquadMarkers(squadsDataRef.current, currentZoom);
         }
 
-        if (heatmapEnabledRef.current) {
-          // Heatmap mode: toggle between heatmap and markers based on zoom
-          if (showMarkers) {
-            // Zoomed in: show markers, hide heatmap
-            if (!map.hasLayer(markerLayer)) {
-              markerLayer.addTo(map);
-            }
-            if (container) {
-              container.classList.remove('markers-hidden');
-              container.classList.add('markers-visible');
-            }
+        // Heatmap: always on, fade opacity as zoom increases
+        if (heatLayerRef.current) {
+          if (!map.hasLayer(heatLayerRef.current)) {
+            heatLayerRef.current.addTo(map);
+          }
+          const heatOpacity = currentZoom <= ZOOM_HEATMAP_FADE
+            ? 1
+            : currentZoom >= ZOOM_HEATMAP_GONE
+              ? 0
+              : 1 - (currentZoom - ZOOM_HEATMAP_FADE) / (ZOOM_HEATMAP_GONE - ZOOM_HEATMAP_FADE);
+          const heatCanvas = container?.querySelector('canvas') as HTMLCanvasElement;
+          if (heatCanvas) {
+            heatCanvas.style.transition = 'opacity 0.3s ease-out';
+            heatCanvas.style.opacity = String(heatOpacity);
+          }
+        }
 
-            // Fade out and remove heatmap
-            if (heatLayerRef.current && map.hasLayer(heatLayerRef.current)) {
-              const heatmapCanvas = mapRef.current?.querySelector('canvas') as HTMLCanvasElement;
-              if (heatmapCanvas) {
-                heatmapCanvas.style.transition = 'opacity 0.3s ease-out';
-                heatmapCanvas.style.opacity = '0';
-              }
-              setTimeout(() => {
-                if (heatLayerRef.current && map.hasLayer(heatLayerRef.current)) {
-                  heatLayerRef.current.remove();
-                }
-              }, 300);
-            }
-          } else {
-            // Zoomed out: show heatmap, hide markers
-            if (heatLayerRef.current && !map.hasLayer(heatLayerRef.current)) {
-              heatLayerRef.current.addTo(map);
-              // Fade in effect
-              const heatmapCanvas = mapRef.current?.querySelector('canvas') as HTMLCanvasElement;
-              if (heatmapCanvas) {
-                heatmapCanvas.style.opacity = '0';
-                heatmapCanvas.style.transition = 'opacity 0.3s ease-out';
-                requestAnimationFrame(() => {
-                  heatmapCanvas.style.opacity = '1';
-                });
-              }
-            }
-
-            // Hide markers
-            if (container) {
-              container.classList.add('markers-hidden');
-              container.classList.remove('markers-visible');
-            }
-            setTimeout(() => {
-              if (map.hasLayer(markerLayer)) {
-                markerLayer.remove();
-              }
-            }, 300);
-          }
-        } else {
-          // Heatmap disabled: always show markers
-          if (!map.hasLayer(markerLayer)) {
-            markerLayer.addTo(map);
-          }
-          if (container) {
-            container.classList.remove('markers-hidden');
-            container.classList.add('markers-visible');
-          }
-
-          // Remove heatmap if present
-          if (heatLayerRef.current && map.hasLayer(heatLayerRef.current)) {
-            heatLayerRef.current.remove();
-          }
+        // Markers: swap sampled subset
+        if (usersDataRef.current.length > 0) {
+          refreshVisibleMarkers(currentZoom);
         }
       };
 
-      // Listen for zoom changes to toggle layers
+      // Update on zoom changes only
       map.on('zoomend', updateLayerVisibility);
 
       // Function to load and display users from database
@@ -636,20 +601,19 @@ const Map = () => {
           const dbUsers = await getUsersWithLocations();
           console.log(`Loading ${dbUsers.length} users with locations on map`);
           
-          // Store users data for later use
+          // Store users data
           usersDataRef.current = dbUsers;
 
           // Create heatmap layer
           if (heatLayerRef.current) {
             heatLayerRef.current.remove();
           }
-          const heatLayer = createHeatmapLayer(dbUsers);
-          heatLayerRef.current = heatLayer;
+          heatLayerRef.current = createHeatmapLayer(dbUsers);
 
-          // Create markers
-          createMarkers(dbUsers, currentUserAddress);
+          // Pre-build all markers once
+          buildAllMarkers(dbUsers, currentUserAddress);
 
-          // Set initial visibility based on current zoom and heatmap state
+          // Show appropriate layers for current zoom
           updateLayerVisibility();
         } catch (error) {
           console.error("Error loading users on map:", error);
