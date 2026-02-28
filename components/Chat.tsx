@@ -244,7 +244,7 @@ const Chat = () => {
 
     const container = containerRef.current;
     if (container) {
-      container.addEventListener("scroll", handleScroll);
+      container.addEventListener("scroll", handleScroll, { passive: true });
       return () => container.removeEventListener("scroll", handleScroll);
     }
   }, []);
@@ -280,7 +280,7 @@ const Chat = () => {
       setIsAtBottom(atBottom);
     };
 
-    messagesContainer.addEventListener('scroll', handleScroll);
+    messagesContainer.addEventListener('scroll', handleScroll, { passive: true });
     return () => messagesContainer.removeEventListener('scroll', handleScroll);
   }, [viewMode]);
 

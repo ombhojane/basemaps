@@ -71,12 +71,6 @@ const OnboardingModal = ({
   }, [locationSearch]);
 
   const handleSave = async () => {
-    console.log("=== ONBOARDING SAVE STARTED ===");
-    console.log("Has basename:", hasBasename);
-    console.log("Preferred name:", preferredName);
-    console.log("Location denied:", locationDenied);
-    console.log("Selected location:", selectedLocation);
-    
     // Validation
     if (!hasBasename && !preferredName.trim()) {
       alert("Please enter your preferred name");
@@ -92,25 +86,19 @@ const OnboardingModal = ({
     try {
       // Update user with preferred name if needed
       if (!hasBasename && preferredName.trim()) {
-        console.log("Saving preferred name:", preferredName.trim());
         await upsertUser(walletAddress, { preferred_name: preferredName.trim() });
-        console.log("✓ Preferred name saved");
       }
 
       // Update location if selected
       if (locationDenied && selectedLocation) {
         const lat = parseFloat(selectedLocation.lat);
         const lon = parseFloat(selectedLocation.lon);
-        console.log(`Saving location: ${lat}, ${lon}`);
         await updateUserLocation(walletAddress, lat, lon);
-        console.log("✓ Location saved");
       }
 
-      console.log("=== ONBOARDING SAVE COMPLETE ===");
       onClose();
       
       // Reload page to reflect changes
-      console.log("Reloading page in 500ms...");
       setTimeout(() => {
         window.location.reload();
       }, 500);
@@ -129,15 +117,11 @@ const OnboardingModal = ({
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    console.log("Key pressed:", e.key);
     if (e.key === "Enter" && !isSaving) {
-      console.log("Enter pressed, attempting save...");
       e.preventDefault();
       
       // If there are suggestions visible and one is selected, use that
-      // Otherwise, proceed with save if validation passes
       if (suggestions.length > 0 && !selectedLocation) {
-        console.log("Suggestions visible but none selected, selecting first...");
         handleLocationSelect(suggestions[0]);
         return;
       }
@@ -147,11 +131,6 @@ const OnboardingModal = ({
   };
 
   if (!isOpen) return null;
-
-  console.log("=== ONBOARDING MODAL RENDERING ===");
-  console.log("Wallet:", walletAddress);
-  console.log("Has basename:", hasBasename);
-  console.log("Location denied:", locationDenied);
 
   return (
     <div className="modal-overlay" onClick={onClose}>

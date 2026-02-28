@@ -10,7 +10,20 @@ const nextConfig: NextConfig = {
     return config;
   },
   images: {
-    domains: ['basemaps.vercel.app'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'basemaps.vercel.app',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.imgur.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.neynar.com',
+      },
+    ],
   },
   async headers() {
     return [

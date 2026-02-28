@@ -134,18 +134,13 @@ const Map = () => {
 
     const initUser = async () => {
       try {
-        console.log("=== INITIALIZING USER ===");
-        console.log("Wallet address:", address);
+        console.log("Initializing user for wallet:", address);
         
         let user = await getUserByWallet(address);
-        console.log("User data from DB:", user);
         
         if (!user) {
-          console.log("New user, creating...");
-          // Create new user with random avatar
           const randomAvatar = AVATAR_OPTIONS[Math.floor(Math.random() * AVATAR_OPTIONS.length)];
           user = await upsertUser(address, { avatar: randomAvatar });
-          console.log("User created:", user);
         }
 
         // Check if onboarding is needed (after map loads)
@@ -158,28 +153,15 @@ const Map = () => {
     };
 
     const checkOnboardingNeeded = (user: User | null) => {
-      console.log("=== CHECKING ONBOARDING STATUS ===");
-      console.log("User:", user);
-      
       const hasName = !!user?.basename || !!user?.preferred_name;
       const hasLocation = !!user?.latitude && !!user?.longitude;
       
-      console.log("Has name (basename or preferred):", hasName);
-      console.log("Has location (lat/lng):", hasLocation);
-      console.log("Basename:", user?.basename);
-      console.log("Preferred name:", user?.preferred_name);
-      console.log("Latitude:", user?.latitude);
-      console.log("Longitude:", user?.longitude);
-      
       if (!hasName || !hasLocation) {
-        console.log("⚠️ ONBOARDING NEEDED");
         setOnboardingModal({
           isOpen: true,
           hasBasename: hasName,
           locationDenied: !hasLocation,
         });
-      } else {
-        console.log("✓ User fully onboarded");
       }
     };
 
@@ -342,11 +324,8 @@ const Map = () => {
             });
           });
 
-          // Add marker to squad layer
           squadLayer.addLayer(marker);
         });
-
-        console.log(`Created ${squads.length} squad markers at zoom ${zoom}`);
       };
 
       /**
@@ -355,7 +334,6 @@ const Map = () => {
       const loadSquadsOnMap = async () => {
         try {
           const squads = await getSquadsWithMemberCount();
-          console.log(`Loading ${squads.length} squads on map`);
           
           // Store squads data
           squadsDataRef.current = squads;
@@ -526,8 +504,6 @@ const Map = () => {
 
           allMarkersRef.current[user.wallet_address] = marker;
         });
-
-        console.log(`Pre-built ${Object.keys(allMarkersRef.current).length} markers`);
       };
 
       /**
@@ -616,7 +592,6 @@ const Map = () => {
       const loadUsersOnMap = async (currentUserAddress?: string) => {
         try {
           const dbUsers = await getUsersWithLocations();
-          console.log(`Loading ${dbUsers.length} users with locations on map`);
           
           // Store users data
           usersDataRef.current = dbUsers;
@@ -657,7 +632,7 @@ const Map = () => {
             const user = await getUserByWallet(currentAddress);
             
             if (user && user.latitude && user.longitude) {
-              console.log(`✓ Using saved location: ${user.latitude}, ${user.longitude}`);
+              console.log(`Using saved location: ${user.latitude}, ${user.longitude}`);
               locationSet = true;
               
               // Center map on saved location
@@ -667,9 +642,8 @@ const Map = () => {
               currentUserIdRef.current = user.id;
               setCurrentUserId(user.id);
               
-              // Load users and squads on map
-              await loadUsersOnMap(currentAddress);
-              await loadSquadsOnMap();
+              // Load users and squads on map in parallel (async-parallel)
+              await Promise.all([loadUsersOnMap(currentAddress), loadSquadsOnMap()]);
               return; // Exit early - we're done!
             }
           } catch (err) {
@@ -683,7 +657,6 @@ const Map = () => {
           navigator.geolocation.getCurrentPosition(
             async (position) => {
               const { latitude, longitude } = position.coords;
-              console.log(`Browser location: ${latitude}, ${longitude}`);
               
               map.setView([latitude, longitude], 14);
 
@@ -701,22 +674,18 @@ const Map = () => {
                 }
               }
 
-              await loadUsersOnMap(currentAddress);
-              await loadSquadsOnMap();
+              await Promise.all([loadUsersOnMap(currentAddress), loadSquadsOnMap()]);
             },
             async (_error) => {
-              console.log("Location access denied, using default location (Mumbai)");
               map.setView([19.0760, 72.8777], 13);
-              await loadUsersOnMap(currentAddress);
-              await loadSquadsOnMap();
+              await Promise.all([loadUsersOnMap(currentAddress), loadSquadsOnMap()]);
             }
           );
         } else if (!locationSet) {
           // No geolocation support and no saved location
-          console.log("No geolocation support, using default location (Mumbai)");
+          console.log("No geolocation support, using default location");
           map.setView([19.0760, 72.8777], 13);
-          await loadUsersOnMap(currentAddress);
-          await loadSquadsOnMap();
+          await Promise.all([loadUsersOnMap(currentAddress), loadSquadsOnMap()]);
         }
       };
       
@@ -745,7 +714,6 @@ const Map = () => {
         const user = await getUserByWallet(address);
         
         if (user && user.latitude && user.longitude && mapInstanceRef.current) {
-          console.log(`🎯 Re-centering map to saved location: ${user.latitude}, ${user.longitude}`);
           mapInstanceRef.current.setView([user.latitude, user.longitude], 14, {
             animate: true,
             duration: 1
@@ -830,7 +798,7 @@ const Map = () => {
       <div className="utilities-container">
         <button
           className="utilities-btn"
-          onClick={() => setShowUtilities(!showUtilities)}
+          onClick={() => setShowUtilities(prev => !prev)}
           aria-label="Utilities"
         >
           <svg
@@ -872,7 +840,7 @@ const Map = () => {
                 </div>
                 <button
                   className={`toggle-switch ${heatmapEnabled ? 'active' : ''}`}
-                  onClick={() => setHeatmapEnabled(!heatmapEnabled)}
+                  onClick={() => setHeatmapEnabled(prev => !prev)}
                   aria-label="Toggle heatmap"
                 >
                   <span className="toggle-slider"></span>

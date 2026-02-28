@@ -19,24 +19,21 @@ export async function getFarcasterByWallet(walletAddress: string): Promise<{ fid
   try {
     const apiKey = process.env.NEXT_PUBLIC_NEYNAR_API_KEY || 'NEYNAR_API_DOCS';
     const url = `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${walletAddress}`;
-    
-    console.log(`Fetching Farcaster profile for wallet: ${walletAddress.slice(0, 6)}...`);
-    
+
     const response = await fetch(url, {
       headers: {
         'accept': 'application/json',
         'api_key': apiKey
       }
     });
-    
+
     if (!response.ok) {
-      console.log(`Neynar API returned status ${response.status} for ${walletAddress.slice(0, 6)}`);
       return null;
     }
-    
+
     const data = await response.json();
     const addressKey = walletAddress.toLowerCase();
-    
+
     if (data && data[addressKey] && data[addressKey][0]) {
       const user = data[addressKey][0];
       const farcasterData = {
@@ -44,12 +41,10 @@ export async function getFarcasterByWallet(walletAddress: string): Promise<{ fid
         pfp: user.pfp_url || '',
         username: user.username || ''
       };
-      
-      console.log(`✓ Found Farcaster profile for ${walletAddress.slice(0, 6)}:`, farcasterData);
+
       return farcasterData;
     }
-    
-    console.log(`No Farcaster profile found for ${walletAddress.slice(0, 6)}`);
+
     return null;
   } catch (error) {
     console.error('Error fetching Farcaster profile by wallet:', error);
@@ -63,7 +58,6 @@ export async function upsertUser(walletAddress: string, data?: Partial<User>) {
   try {
     const farcasterData = await getFarcasterByWallet(walletAddress);
     if (farcasterData) {
-      console.log(`✓ Integrating Farcaster profile for ${walletAddress.slice(0, 6)}`);
       data = {
         ...data,
         farcaster_fid: farcasterData.fid,
@@ -72,7 +66,7 @@ export async function upsertUser(walletAddress: string, data?: Partial<User>) {
       };
     }
   } catch {
-    console.log(`No Farcaster profile for ${walletAddress.slice(0, 6)}`);
+    // No Farcaster profile found, proceed without it
   }
 
   const { data: user, error } = await supabase
@@ -102,14 +96,14 @@ export async function getFarcasterProfileImage(fid: string): Promise<string | nu
         'api_key': process.env.NEXT_PUBLIC_NEYNAR_API_KEY || 'NEYNAR_API_DOCS'
       }
     });
-    
+
     if (!response.ok) return null;
-    
+
     const data = await response.json();
     if (data.users && data.users[0]?.pfp_url) {
       return data.users[0].pfp_url;
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error fetching Farcaster profile:', error);
@@ -125,18 +119,15 @@ export async function getFarcasterProfileImage(fid: string): Promise<string | nu
 export function getUserAvatar(user: User): string {
   // PRIORITY 1: Farcaster profile picture (onchain identity)
   if (user.farcaster_pfp) {
-    console.log(`✓ Farcaster PFP for ${user.wallet_address.slice(0, 6)}: ${user.farcaster_pfp.slice(0, 50)}...`);
     return user.farcaster_pfp;
   }
-  
+
   // PRIORITY 2: Custom selected avatar from settings
   if (user.avatar) {
-    console.log(`✓ Custom avatar for ${user.wallet_address.slice(0, 6)}: ${user.avatar}`);
     return user.avatar;
   }
-  
+
   // PRIORITY 3: Default fallback
-  console.log(`✓ Default avatar for ${user.wallet_address.slice(0, 6)}`);
   return '/icon.png';
 }
 
@@ -149,17 +140,17 @@ export function getUserDisplayName(user: User): string {
   if (user.preferred_name) {
     return user.preferred_name;
   }
-  
+
   // PRIORITY 2: Basename (onchain identity)
   if (user.basename) {
     return user.basename;
   }
-  
+
   // PRIORITY 3: Farcaster username
   if (user.farcaster_username) {
     return user.farcaster_username;
   }
-  
+
   // PRIORITY 4: Shortened wallet address
   return `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`;
 }
@@ -565,7 +556,7 @@ export async function getUserSquads(userId: string): Promise<Squad[]> {
 
   if (error) throw error;
   if (!data) return [];
-  
+
   const squads: Squad[] = [];
   for (const item of data) {
     if (item.squad && typeof item.squad === 'object' && !Array.isArray(item.squad)) {

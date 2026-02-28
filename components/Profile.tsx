@@ -92,7 +92,7 @@ const Profile = () => {
 
     const container = containerRef.current;
     if (container) {
-      container.addEventListener("scroll", handleScroll);
+      container.addEventListener("scroll", handleScroll, { passive: true });
       return () => container.removeEventListener("scroll", handleScroll);
     }
   }, []);
@@ -140,8 +140,8 @@ const Profile = () => {
 
     loadUserData();
     
-    // Refresh every 10 seconds when on profile page
-    const interval = setInterval(loadUserData, 10000);
+    // Refresh every 30 seconds when on profile page
+    const interval = setInterval(loadUserData, 30000);
 
     return () => {
       clearInterval(interval);
@@ -174,7 +174,7 @@ const Profile = () => {
         <button
           className="settings-btn"
           aria-label="Settings"
-          onClick={() => setShowSettings(!showSettings)}
+          onClick={() => setShowSettings(prev => !prev)}
         >
           <svg
             width="20"

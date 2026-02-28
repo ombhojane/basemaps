@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { useAccount, useBalance, useConnect } from "wagmi";
@@ -47,31 +47,18 @@ export default function Home() {
 
   /**
    * Listen for scroll events from Chat, Meetups and Profile pages
+   * Single handler for all scroll events (rerender-defer-reads)
    */
   useEffect(() => {
-    const handleChatScroll = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      setShowGlassmorphism(customEvent.detail);
+    const handleScrollEvent = (e: Event) => {
+      setShowGlassmorphism((e as CustomEvent).detail);
     };
 
-    const handleMeetupsScroll = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      setShowGlassmorphism(customEvent.detail);
-    };
-
-    const handleProfileScroll = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      setShowGlassmorphism(customEvent.detail);
-    };
-
-    window.addEventListener("chatScroll", handleChatScroll);
-    window.addEventListener("meetupsScroll", handleMeetupsScroll);
-    window.addEventListener("profileScroll", handleProfileScroll);
+    const events = ["chatScroll", "meetupsScroll", "profileScroll"];
+    events.forEach(evt => window.addEventListener(evt, handleScrollEvent));
 
     return () => {
-      window.removeEventListener("chatScroll", handleChatScroll);
-      window.removeEventListener("meetupsScroll", handleMeetupsScroll);
-      window.removeEventListener("profileScroll", handleProfileScroll);
+      events.forEach(evt => window.removeEventListener(evt, handleScrollEvent));
     };
   }, []);
 
@@ -84,6 +71,7 @@ export default function Home() {
 
   /**
    * Fetch Basename and avatar for account display
+   * Uses Promise.all to parallelize independent fetches (async-parallel)
    */
   useEffect(() => {
     const fetchUserData = async () => {
@@ -94,11 +82,11 @@ export default function Home() {
       }
 
       try {
-        // Get user from database
-        const user = await getUserByWallet(address);
-        
-        // Fetch basename from chain
-        const basename = await getName({ address, chain: base });
+        // Fetch user and basename in parallel (async-parallel)
+        const [user, basename] = await Promise.all([
+          getUserByWallet(address),
+          getName({ address, chain: base }).catch(() => null),
+        ]);
         
         // Save basename to database if we got one and user exists
         if (basename && user) {
@@ -116,9 +104,7 @@ export default function Home() {
         
         // Set avatar if user exists in DB
         if (user) {
-          const avatar = getUserAvatar(user);
-          setUserAvatar(avatar);
-          console.log('Profile icon avatar:', avatar);
+          setUserAvatar(getUserAvatar(user));
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -134,9 +120,7 @@ export default function Home() {
    */
   useEffect(() => {
     const handleAvatarUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      setUserAvatar(customEvent.detail);
-      console.log('Profile icon updated instantly:', customEvent.detail);
+      setUserAvatar((e as CustomEvent).detail);
     };
 
     window.addEventListener("avatarUpdated", handleAvatarUpdate);
@@ -157,7 +141,7 @@ export default function Home() {
           <div className="profile-icon-container">
             <button
               className="profile-icon-btn profile-icon-avatar"
-              onClick={() => setShowAccountDropdown(!showAccountDropdown)}
+              onClick={() => setShowAccountDropdown(prev => !prev)}
               aria-label="Account"
             >
               <Image

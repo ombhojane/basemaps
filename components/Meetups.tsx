@@ -33,7 +33,7 @@ const Meetups = () => {
   const currentUserId = address || "current-user";
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [meetups, setMeetups] = useState<Meetup[]>([
+  const [meetups, setMeetups] = useState<Meetup[]>(() => [
     {
       id: "1",
       title: "Base Around the World",
@@ -102,7 +102,7 @@ const Meetups = () => {
 
     const container = containerRef.current;
     if (container) {
-      container.addEventListener("scroll", handleScroll);
+      container.addEventListener("scroll", handleScroll, { passive: true });
       return () => container.removeEventListener("scroll", handleScroll);
     }
   }, []);
